@@ -12,10 +12,12 @@ from app.services.extractor import DocumentExtractor
 from app.services.chunker import DocumentChunker
 from app.services.analyzer import HybridAnalyzer
 from app.services.vector_store import VectorStoreService
+from app.services.assistant import JabariAssistant
 from app.db import SessionLocal, init_db, Document, DocumentChunk
 
-# Initialize the Database on Startup
+# Initialize components
 init_db()
+assistant = JabariAssistant()
 
 app = FastAPI(title="Jabari AI - Phase 2 Intelligent Vault")
 
@@ -26,6 +28,10 @@ def get_db():
         yield db
     finally:
         db.close()
+
+class ChatRequest(BaseModel):
+    message: str
+    document_id: int | None = None
 
 # Configure CORS for the React/Next.js frontend
 app.add_middleware(
