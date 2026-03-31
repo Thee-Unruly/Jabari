@@ -60,47 +60,49 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
       {/* 🏛️ NEURAL COMMAND PALETTE (MODAL OVERLAY) */}
       {showDocSelector && (
          <div className="absolute inset-0 z-[100] flex items-center justify-center p-8 lg:p-20 animate-in fade-in duration-300">
-            <div className="absolute inset-0 bg-jabari-bg/80 backdrop-blur-md" onClick={() => setShowDocSelector(false)} />
+            {/* Lighter, smoother backdrop */}
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDocSelector(false)} />
             
-            <div className="w-full max-w-2xl bg-jabari-surface border border-jabari-border shadow-[0_30px_100px_rgba(0,0,0,0.9)] flex flex-col rounded-sm animate-in zoom-in-95 duration-300 overflow-hidden">
-               <div className="p-6 border-b border-jabari-border flex items-center gap-4">
-                  <Search className="w-5 h-5 text-jabari-dim" />
+            {/* Elevated, High-Contrast Palette */}
+            <div className="w-full max-w-2xl bg-jabari-surface2 border border-jabari-cream/20 shadow-[0_0_100px_rgba(0,0,0,1)] flex flex-col rounded-sm animate-in zoom-in-95 duration-300 overflow-hidden relative z-50">
+               <div className="p-8 border-b border-jabari-border flex items-center gap-6">
+                  <Search className="w-6 h-6 text-jabari-cream" />
                   <input 
                      autoFocus
                      type="text" 
-                     placeholder="Search Vaulted Intelligence..." 
-                     className="bg-transparent border-none text-xl font-serif text-jabari-nearWhite focus:outline-none w-full italic"
+                     placeholder="Query Vaulted Intelligence..." 
+                     className="bg-transparent border-none text-2xl font-serif text-jabari-nearWhite focus:outline-none w-full italic placeholder:text-jabari-dim/40"
                      value={searchQuery}
                      onChange={(e) => setSearchQuery(e.target.value)}
                   />
-                  <X className="w-5 h-5 text-jabari-dim cursor-pointer hover:text-jabari-cream" onClick={() => setShowDocSelector(false)} />
+                  <X className="w-6 h-6 text-jabari-dim cursor-pointer hover:text-jabari-cream transition-all" onClick={() => setShowDocSelector(false)} />
                </div>
 
-               <div className="flex-1 overflow-y-auto max-h-[400px] p-2 custom-scrollbar">
-                  <div className="px-4 py-3 text-[9px] font-black tracking-widest text-jabari-dim uppercase opacity-50">Global Scopes</div>
+               <div className="flex-1 overflow-y-auto max-h-[450px] p-4 custom-scrollbar">
+                  <div className="px-6 py-4 text-[10px] font-black tracking-[0.3em] text-jabari-cream uppercase opacity-60">Neural Scopes</div>
                   <button 
                      onClick={() => { setGroundedDocId(null); setShowDocSelector(false); }}
-                     className={`w-full flex items-center justify-between p-4 rounded-sm text-left transition-all mb-1 ${!groundedDocId ? 'bg-jabari-surface2 border border-jabari-gray/20 shadow-lg' : 'hover:bg-jabari-surface2/50 border border-transparent'}`}
+                     className={`w-full flex items-center justify-between p-6 rounded-sm text-left transition-all mb-2 ${!groundedDocId ? 'bg-jabari-cream text-jabari-ink shadow-[0_0_30px_rgba(255,255,255,0.1)]' : 'hover:bg-jabari-surface/50 border border-jabari-border/30'}`}
                   >
-                     <div className="flex items-center gap-4">
-                        <Database className="w-4 h-4 text-jabari-cream" />
-                        <span className="text-[11px] font-black tracking-[0.1em] uppercase">UNIVERSAL_VAULT_ANALYSIS</span>
+                     <div className="flex items-center gap-5">
+                        <Database className="w-5 h-5" />
+                        <span className="text-[12px] font-black tracking-[0.1em] uppercase">UNIVERSAL_VAULT_ANALYSIS</span>
                      </div>
-                     {!groundedDocId && <Check className="w-4 h-4 text-jabari-cream" />}
+                     {!groundedDocId && <Check className="w-5 h-5" />}
                   </button>
 
-                  <div className="px-4 py-3 text-[9px] font-black tracking-widest text-jabari-dim uppercase opacity-50 mt-4">Vaulted Sources</div>
+                  <div className="px-6 py-4 text-[10px] font-black tracking-[0.3em] text-jabari-cream uppercase opacity-60 mt-6">Vaulted Sources</div>
                   {filteredSources.map(doc => (
                      <button 
                         key={doc.id}
                         onClick={() => { setGroundedDocId(doc.id); setShowDocSelector(false); }}
-                        className={`w-full flex items-center justify-between p-4 rounded-sm text-left transition-all mb-1 ${groundedDocId === doc.id ? 'bg-jabari-surface2 border border-jabari-gray/20 shadow-lg' : 'hover:bg-jabari-surface2/50 border border-transparent'}`}
+                        className={`w-full flex items-center justify-between p-6 rounded-sm text-left transition-all mb-2 ${groundedDocId === doc.id ? 'bg-jabari-cream text-jabari-ink shadow-[0_0_30px_rgba(255,255,255,0.1)]' : 'hover:bg-jabari-surface/50 border border-jabari-border/30'}`}
                      >
-                        <div className="flex items-center gap-4">
-                           <FileText className={`w-4 h-4 ${groundedDocId === doc.id ? 'text-jabari-cream' : 'text-jabari-dim'}`} />
-                           <span className="text-xs text-jabari-nearWhite font-light">{doc.name}</span>
+                        <div className="flex items-center gap-5">
+                           <FileText className="w-5 h-5" />
+                           <span className="text-sm font-light">{doc.name}</span>
                         </div>
-                        {groundedDocId === doc.id && <Check className="w-4 h-4 text-jabari-cream" />}
+                        {groundedDocId === doc.id && <Check className="w-5 h-5" />}
                      </button>
                    ))}
                </div>
@@ -158,18 +160,21 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
       <div className="p-8 bg-jabari-bg border-t border-jabari-border relative">
         <div className="max-w-4xl mx-auto relative group">
           
-          {/* Grounding Status */}
+          {/* High-Power Grounding Indicator */}
           {activeDocName && (
-             <div className="absolute -top-12 left-0 flex items-center gap-3 px-4 py-2 bg-jabari-surface border border-jabari-border rounded-sm animate-in slide-in-from-bottom-2 shadow-2xl">
-                <div className="w-1.5 h-1.5 rounded-full bg-jabari-cream animate-pulse" />
-                <span className="text-[9px] font-black text-jabari-nearWhite uppercase tracking-widest">GROUNDED: {activeDocName}</span>
-                <button onClick={() => setGroundedDocId(null)} className="ml-2 hover:text-jabari-cream transition-all">
-                   <X className="w-3 h-3" />
+             <div className="absolute -top-16 left-0 flex items-center gap-3 px-5 py-2.5 bg-jabari-cream border border-jabari-cream rounded-sm animate-in slide-in-from-bottom-4 shadow-[0_10px_40px_rgba(0,0,0,0.8)] z-50">
+                <div className="w-2 h-2 rounded-full bg-jabari-ink animate-pulse" />
+                <span className="text-[10px] font-black text-jabari-ink uppercase tracking-[0.2em] leading-none">NEURAL_GROUNDING: {activeDocName}</span>
+                <button 
+                   onClick={() => setGroundedDocId(null)} 
+                   className="ml-3 p-1 hover:bg-jabari-ink/10 rounded-full transition-all text-jabari-ink"
+                >
+                   <X className="w-4 h-4" />
                 </button>
              </div>
           )}
 
-          <div className="flex items-stretch bg-jabari-surface border border-jabari-border rounded-sm shadow-2xl focus-within:border-jabari-cream/50 transition-all overflow-hidden">
+          <div className="flex items-stretch bg-jabari-surface border border-jabari-border rounded-sm shadow-2xl focus-within:border-jabari-cream/40 focus-within:shadow-[0_0_30px_rgba(255,255,240,0.05)] transition-all overflow-hidden border-l-4 border-l-jabari-cream/20">
             <button 
               onClick={() => setShowDocSelector(true)}
               className={`p-6 border-r border-jabari-border hover:bg-jabari-surface2 transition-all group ${groundedDocId ? 'text-jabari-cream' : 'text-jabari-dim'}`}
