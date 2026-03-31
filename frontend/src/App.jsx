@@ -32,49 +32,54 @@ const App = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#050505] text-white overflow-hidden font-sansSelection">
-      {/* 1. Left Sidebar: Source Gallery (NotebookLM Style) */}
+    <div className="flex h-screen bg-jabari-bg text-jabari-cream overflow-hidden selection:bg-blue-500/30">
+      {/* 1. Left Sidebar: Source Gallery (Matching Landing Page Table Style) */}
       <aside 
         className={`
-          glass border-r border-white/5 transition-all duration-300 flex flex-col
-          ${sidebarOpen ? 'w-72' : 'w-0 opacity-0 overflow-hidden'}
+          bg-jabari-card border-r border-white/5 transition-all duration-300 flex flex-col
+          ${sidebarOpen ? 'w-80' : 'w-0 opacity-0 overflow-hidden'}
         `}
       >
-        <div className="p-6 flex items-center justify-between border-b border-white/5">
+        <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <span className="font-black text-sm">J</span>
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-2xl">
+              <span className="font-black text-black text-lg">J</span>
             </div>
-            <h1 className="font-black tracking-tighter text-xl">JABARI</h1>
+            <div>
+              <h1 className="font-black tracking-tighter text-2xl leading-none">JABARI</h1>
+              <span className="text-[9px] font-black tracking-widest text-white/20 uppercase">Intelligence Vault</span>
+            </div>
           </div>
-          <button onClick={() => setActiveDoc(null)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-            <Plus className="w-4 h-4 text-white/50" />
-          </button>
         </div>
 
-        <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
-          <div className="text-[10px] uppercase tracking-widest text-white/20 font-black mb-4 px-2">Your Vault</div>
+        <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
+          <div className="text-[10px] uppercase tracking-widest text-[#a1a1a1] font-black mb-6 px-2 opacity-50">Document Library</div>
           {sources.length === 0 ? (
-            <div className="px-2 py-4 text-xs text-white/20 italic">No sources currently in the vault.</div>
+            <div className="px-2 py-8 border border-white/5 rounded-2xl bg-white/[0.02] text-center">
+              <p className="text-[10px] text-white/20 font-black uppercase tracking-widest px-4">Your vault is currently empty.</p>
+            </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-3">
               {sources.map((doc) => (
                 <button
                   key={doc.id}
                   onClick={() => setActiveDoc(doc)}
                   className={`
-                    w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group text-left
-                    ${activeDoc?.id === doc.id ? 'bg-blue-500/10 border border-blue-500/20' : 'hover:bg-white/5 border border-transparent'}
+                    w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group text-left border
+                    ${activeDoc?.id === doc.id ? 'bg-white/5 border-white/10 shadow-xl' : 'bg-transparent border-transparent hover:bg-white/[0.02]'}
                   `}
                 >
-                  <FileText className={`w-4 h-4 ${activeDoc?.id === doc.id ? 'text-blue-400' : 'text-white/20 group-hover:text-white/40'}`} />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${activeDoc?.id === doc.id ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/20 group-hover:text-white/40'}`}>
+                    <FileText className="w-5 h-5" />
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm truncate font-medium ${activeDoc?.id === doc.id ? 'text-blue-200' : 'text-white/50'}`}>
+                    <p className={`text-sm truncate font-bold tracking-tight ${activeDoc?.id === doc.id ? 'text-white' : 'text-white/60'}`}>
                       {doc.name}
                     </p>
-                    <p className="text-[10px] text-white/20 font-bold uppercase tracking-wider mt-0.5">
-                      {doc.category || 'PDF'} • {doc.analysis?.status || 'Processing'}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                       <span className="px-2 py-0.5 rounded-full bg-white/5 text-[8px] font-black text-white/40 border border-white/5 uppercase">{doc.category || 'RFP'}</span>
+                       <span className={`w-1.5 h-1.5 rounded-full ${doc.analysis?.status === 'Verified' ? 'bg-jabari-risk-none' : 'bg-jabari-risk-medium'}`} />
+                    </div>
                   </div>
                 </button>
               ))}
@@ -82,40 +87,42 @@ const App = () => {
           )}
         </div>
 
-        <div className="p-4 border-t border-white/5 bg-black/20">
-          <div className="flex items-center gap-3 p-2 text-white/30 hover:text-white/60 cursor-pointer transition-colors">
-            <Settings className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-widest">Settings</span>
-          </div>
+        <div className="p-6 border-t border-white/5">
+           <button 
+             onClick={() => setActiveDoc(null)}
+             className="w-full py-4 rounded-2xl bg-white text-black font-black text-[11px] uppercase tracking-widest hover:bg-white/90 transition-all flex items-center justify-center gap-2"
+           >
+             <Plus className="w-4 h-4" /> New Ingestion
+           </button>
         </div>
       </aside>
 
       {/* 2. Main Content Area */}
-      <main className="flex-1 flex flex-col relative">
+      <main className="flex-1 flex flex-col relative bg-jabari-bg">
         {/* Top Navbar */}
-        <header className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-black/40 backdrop-blur-md z-10">
-          <div className="flex items-center gap-4">
+        <header className="h-20 border-b border-white/5 flex items-center justify-between px-10 bg-jabari-bg/80 backdrop-blur-xl z-10">
+          <div className="flex items-center gap-6">
             <button 
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-white/5 rounded-lg text-white/40"
+              className="p-2 hover:bg-white/5 rounded-xl text-white/40 transition-colors"
             >
-              {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+              {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
             </button>
             {activeDoc && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-white/20">Vault</span>
-                <ChevronLeft className="w-4 h-4 text-white/10" />
-                <span className="font-black tracking-tight text-blue-200">{activeDoc.name}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Active Source</span>
+                <div className="w-1 h-1 rounded-full bg-white/20" />
+                <span className="font-serif font-light text-xl tracking-tight text-jabari-cream/90 italic">{activeDoc.name}</span>
               </div>
             )}
           </div>
           
-          <div className="flex items-center gap-4">
-             <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black text-emerald-400 uppercase tracking-widest">
-               Phase 1 Online
+          <div className="flex items-center gap-6">
+             <div className="px-4 py-2 rounded-full bg-emerald-500/5 border border-emerald-500/10 text-[9px] font-black text-emerald-500 uppercase tracking-widest">
+               VAULT FOUNDATION ONLINE
              </div>
-             <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-               <User className="w-4 h-4 text-white/50" />
+             <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group hover:border-white/20 transition-all cursor-pointer">
+               <User className="w-5 h-5 text-white/40 group-hover:text-white/70" />
              </div>
           </div>
         </header>
@@ -123,12 +130,16 @@ const App = () => {
         {/* Dynamic Content */}
         <div className="flex-1 overflow-hidden relative">
           {!activeDoc ? (
-            <div className="h-full flex items-center justify-center">
-               <div className="max-w-xl w-full text-center">
-                 <h2 className="text-3xl font-black tracking-tighter mb-4">Initialize Knowledge Base</h2>
-                 <p className="text-white/40 mb-12 text-sm leading-relaxed px-12">
-                   Upload your technical tender documents. <br/>Jabari AI will extract metadata, analyze risks, and verify compliance.
-                 </p>
+            <div className="h-full flex items-center justify-center p-12">
+               <div className="max-w-3xl w-full">
+                 <div className="text-center mb-16">
+                   <h2 className="text-6xl font-serif font-light tracking-tight text-jabari-cream mb-6 italic leading-tight">
+                     Turn Days of Review <br/>Into Minutes
+                   </h2>
+                   <p className="text-white/40 text-lg leading-relaxed max-w-xl mx-auto font-light">
+                     Streamline large-scale tender organization, review, and analysis with Vault.
+                   </p>
+                 </div>
                  <DropZone onUploadSuccess={handleUploadSuccess} />
                </div>
             </div>
