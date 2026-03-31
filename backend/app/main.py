@@ -56,14 +56,22 @@ async def ingest_document(file: UploadFile = File(...)):
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     
     # 1. Save uploaded file temporarily
+    print(f"--- INGESTION START: {file.filename} ---")
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        print(f"[1/5] File saved to: {file_path}")
     except Exception as e:
+        print(f"ERROR Stage 1: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
 
     # 2. Detect Identity & Intent (Stage 1)
-    detection_result = DocumentDetector.identify(file_path)
+    try:
+        detection_result = DocumentDetector.identify(file_path)
+        print(f"[2/5] Identity Detected: {detection_result['category']} (OCR: {detection_result['needs_ocr']})")
+    except Exception as e:
+        print(f"ERROR Stage 2: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Detection failed: {str(e)}")
     
     # 3. Extract Hierarchy & Text (Stage 2)
     extracted_content = ""
@@ -79,24 +87,28 @@ async def ingest_document(file: UploadFile = File(...)):
             extracted_content = DocumentExtractor.extract_from_image(file_path)
         else:
             raise HTTPException(status_code=400, detail="Unsupported file format")
+        print(f"[3/5] Extraction Complete: {len(extracted_content)} chars")
     except Exception as e:
+        print(f"ERROR Stage 3: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
     
     # 4. Smart Chunking (Stage 3)
     try:
         chunks = DocumentChunker.chunk_text(extracted_content)
+        print(f"[4/5] Chunking Complete: {len(chunks)} fragments")
     except Exception as e:
+        print(f"ERROR Stage 4: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Chunking failed: {str(e)}")
     
     # 5. Hybrid AI Analysis (Stage 4)
+    print(f"[5/5] Invoking AI Brain (Model: {os.getenv('GROQ_MODEL')})...")
     try:
-        # Pass the extracted content for deep analysis
         analysis = HybridAnalyzer.run(extracted_content)
+        print(f"--- INGESTION SUCCESS: {file.filename} ---")
     except Exception as e:
-        # Fallback to empty analysis if it fails
+        print(f"ERROR Stage 5: {str(e)}")
         analysis = {"error": f"Analysis failed: {str(e)}", "status": "Failed"}
 
-    # 6. Prepare Response
     return IngestionResponse(
         file_name=file.filename,
         category=detection_result["category"],
