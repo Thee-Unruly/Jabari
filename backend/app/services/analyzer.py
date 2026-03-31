@@ -55,7 +55,12 @@ class GroqIntakeAgent:
         self.api_key = os.getenv("GROQ_API_KEY")
         self.model = os.getenv("GROQ_MODEL", "llama3-70b-8192")
         if self.api_key:
-            self.client = Groq(api_key=self.api_key)
+            try:
+                # Direct initialization to bypass potential 'proxies' env var issues on Windows
+                self.client = Groq(api_key=self.api_key)
+            except Exception as e:
+                print(f"FAILED to initialize Groq client: {e}")
+                self.client = None
         else:
             self.client = None
             print("Warning: GROQ_API_KEY not found. LLM analysis will be skipped.")

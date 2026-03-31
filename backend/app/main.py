@@ -2,16 +2,30 @@ from __future__ import annotations
 import os
 import shutil
 from typing import Any
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from app.services.detector import DocumentDetector
 from app.services.extractor import DocumentExtractor
 from app.services.chunker import DocumentChunker
 from app.services.analyzer import HybridAnalyzer
+from app.services.vector_store import VectorStoreService
+from app.db import SessionLocal, init_db, Document, DocumentChunk
 
-app = FastAPI(title="Jabari AI - Phase 1 Ingestion Engine")
+# Initialize the Database on Startup
+init_db()
+
+app = FastAPI(title="Jabari AI - Phase 2 Intelligent Vault")
+
+# Dependency for DB Session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # Configure CORS for the React/Next.js frontend
 app.add_middleware(
@@ -29,7 +43,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Mount the uploads directory to serve original files
 app.mount("/files", StaticFiles(directory=UPLOAD_DIR), name="files")
 
-class DocumentChunk(BaseModel):
+class DocumentChunkSchema(BaseModel):
     text: str
     section_hint: str
     metadata: dict[str, Any]
@@ -39,7 +53,7 @@ class IngestionResponse(BaseModel):
     category: str
     needs_ocr: bool
     full_content: str
-    chunks: list[DocumentChunk]
+    chunks: list[DocumentChunkSchema]
     analysis: dict[str, Any]
     metadata: dict[str, Any]
 
