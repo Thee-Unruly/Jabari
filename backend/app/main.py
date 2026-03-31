@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from app.services.detector import DocumentDetector
 from app.services.extractor import DocumentExtractor
+from app.services.chunker import DocumentChunker
 
 app = FastAPI(title="Jabari AI - Phase 1 Ingestion Engine")
 
@@ -22,11 +23,17 @@ app.add_middleware(
 UPLOAD_DIR = "backend/data/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+class DocumentChunk(BaseModel):
+    text: str
+    section_hint: str
+    metadata: Dict[str, Any]
+
 class IngestionResponse(BaseModel):
     file_name: str
     category: str
     needs_ocr: bool
-    content: str
+    full_content: str
+    chunks: List[DocumentChunk]
     metadata: Dict[str, Any]
 
 @app.get("/")
@@ -36,7 +43,8 @@ async def health_check():
 @app.post("/ingest", response_model=IngestionResponse)
 async def ingest_document(file: UploadFile = File(...)):
     """
-    Core Ingestion Endpoint: Handles Upload, Detection, and Extraction.
+    Core Ingestion Endpoint: Handles Upload, Detection, Extraction, and Chunking.
+    Stages 1-3 of the pipeline.
     """
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     
@@ -52,7 +60,6 @@ async def ingest_document(file: UploadFile = File(...)):
     
     # 3. Extract Hierarchy & Text (Stage 2)
     extracted_content = ""
-    
     try:
         if detection_result["category"] == "pdf":
             extracted_content = DocumentExtractor.extract_from_pdf(
@@ -65,20 +72,27 @@ async def ingest_document(file: UploadFile = File(...)):
             extracted_content = DocumentExtractor.extract_from_image(file_path)
         else:
             raise HTTPException(status_code=400, detail="Unsupported file format")
-            
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
     
-    # 4. Prepare Response (Infrastructure for Stage 3 & 4: Chunking/Analysis)
+    # 4. Smart Chunking (Stage 3)
+    try:
+        chunks = DocumentChunker.chunk_text(extracted_content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chunking failed: {str(e)}")
+    
+    # 5. Prepare Response
     return IngestionResponse(
         file_name=file.filename,
         category=detection_result["category"],
         needs_ocr=detection_result["needs_ocr"],
-        content=extracted_content,
+        full_content=extracted_content,
+        chunks=chunks,
         metadata={
             "mime_type": detection_result["mime_type"],
             "extension": detection_result["extension"],
-            "path": file_path
+            "path": file_path,
+            "chunk_count": len(chunks)
         }
     )
 
