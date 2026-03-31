@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Send, Bot, User, Loader2, Bookmark, FolderOpen, ChevronDown, Check } from 'lucide-react';
+import { Send, Bot, User, Loader2, Bookmark, Paperclip, ChevronUp, Check, Database, X } from 'lucide-react';
 
 const ChatInterface = ({ documentId, initialSources = [] }) => {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Neural Vault syncronized. Select a document for specific grounding, or query the entire vault.' }
+    { role: 'assistant', content: 'Neural Vault syncronized. Use the vault icon in the input box to ground the model in specific documents.' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +22,7 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
     }
   }, []);
 
-  const activeDocName = sources.find(d => d.id === groundedDocId)?.name || "Universal Vault Analysis";
+  const activeDocName = sources.find(d => d.id === groundedDocId)?.name;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -61,51 +61,6 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
 
   return (
     <div className="flex flex-col h-full bg-jabari-bg">
-      {/* 🏛️ GROUNDING HEADER (Source Selector) */}
-      <div className="p-4 border-b border-jabari-border flex items-center justify-between bg-jabari-surface/50">
-         <div className="relative">
-            <button 
-               onClick={() => setShowDocSelector(!showDocSelector)}
-               className="flex items-center gap-3 px-4 py-2 bg-jabari-surface border border-jabari-border hover:border-jabari-gray/40 transition-all rounded-sm group"
-            >
-               <FolderOpen className="w-3 h-3 text-jabari-cream" />
-               <span className="text-[10px] font-black uppercase tracking-widest text-jabari-nearWhite">{activeDocName}</span>
-               <ChevronDown className={`w-3 h-3 text-jabari-dim transition-transform ${showDocSelector ? 'rotate-180' : ''}`} />
-            </button>
-
-            {showDocSelector && (
-               <div className="absolute top-12 left-0 w-80 bg-jabari-surface border border-jabari-border shadow-2xl z-50 p-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="text-[8px] font-black tracking-widest text-jabari-dim p-2 uppercase border-b border-jabari-border mb-2">NEURAL_GROUNDING SOURCE</div>
-                  
-                  <button 
-                     onClick={() => { setGroundedDocId(null); setShowDocSelector(false); }}
-                     className="w-full flex items-center justify-between p-3 hover:bg-jabari-surface2 rounded-sm text-left transition-colors mb-1"
-                  >
-                     <span className="text-[10px] font-bold text-jabari-gray">UNIVERSAL VAULT ANALYSIS (CROSS-DOC)</span>
-                     {!groundedDocId && <Check className="w-3 h-3 text-jabari-cream" />}
-                  </button>
-
-                  <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                     {sources.map(doc => (
-                        <button 
-                           key={doc.id}
-                           onClick={() => { setGroundedDocId(doc.id); setShowDocSelector(false); }}
-                           className="w-full flex items-center justify-between p-3 hover:bg-jabari-surface2 rounded-sm text-left transition-colors"
-                        >
-                           <span className="text-[10px] text-jabari-nearWhite/80 truncate pr-4">{doc.name}</span>
-                           {groundedDocId === doc.id && <Check className="w-3 h-3 text-jabari-cream" />}
-                        </button>
-                     ))}
-                  </div>
-               </div>
-            )}
-         </div>
-         <div className="flex items-center gap-4 text-[9px] font-black tracking-widest text-jabari-dim">
-            <div className="w-2 h-2 rounded-full bg-jabari-cream" />
-            LLAMA-3 ENGINE ACTIVE
-         </div>
-      </div>
-
       {/* 💬 CHAT FEED */}
       <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar" ref={scrollRef}>
         {messages.map((msg, idx) => (
@@ -126,9 +81,9 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
                       <Bookmark className="w-2 h-2" /> VERIFIED EVIDENCE SOURCES
                    </div>
                    {msg.citations.map((cite, cidx) => (
-                     <div key={cidx} className="p-3 bg-jabari-bg/30 border border-jabari-border/10 rounded-sm hover:border-jabari-cream/20 transition-all cursor-default group">
+                     <div key={cidx} className="p-3 bg-jabari-bg/30 border border-jabari-border/10 rounded-sm">
                         <div className="text-[9px] font-bold text-jabari-cream mb-1">{cite.filename}</div>
-                        <div className="text-[10px] text-jabari-gray italic leading-relaxed opacity-60 group-hover:opacity-100 transition-all">
+                        <div className="text-[10px] text-jabari-gray italic leading-relaxed opacity-60">
                            "...{cite.snippet}"
                         </div>
                      </div>
@@ -146,23 +101,74 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
         )}
       </div>
 
+      {/* 🚀 INTEGRATED COMMAND BOX */}
       <div className="p-6 bg-jabari-bg border-t border-jabari-border">
-        <div className="relative max-w-4xl mx-auto">
-          <input 
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={`Instruct Assistant (${groundedDocId ? 'Grounded Mode' : 'Universal Mode'})...`}
-            className="w-full bg-jabari-surface border border-jabari-border p-5 pr-14 text-sm text-jabari-nearWhite placeholder:text-jabari-dim focus:outline-none focus:border-jabari-cream transition-all rounded-sm shadow-2xl"
-          />
-          <button 
-            onClick={handleSend}
-            disabled={isLoading || !input.trim()}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-jabari-dim hover:text-jabari-cream disabled:opacity-30 transition-all"
-          >
-            <Send className="w-5 h-5 text-jabari-cream" />
-          </button>
+        <div className="max-w-4xl mx-auto relative">
+          
+          {/* Grounding Indicator Pill */}
+          {activeDocName && (
+             <div className="absolute -top-10 left-0 flex items-center gap-2 px-3 py-1 bg-jabari-surface border border-jabari-border rounded-sm animate-in slide-in-from-bottom-2">
+                <Database className="w-2 h-2 text-jabari-cream" />
+                <span className="text-[8px] font-black text-jabari-nearWhite uppercase tracking-widest">Grounded: {activeDocName}</span>
+                <button onClick={() => setGroundedDocId(null)} className="ml-1 hover:text-jabari-cream transition-all">
+                   <X className="w-2 h-2" />
+                </button>
+             </div>
+          )}
+
+          {/* Doc Selector Popover */}
+          {showDocSelector && (
+             <div className="absolute bottom-20 left-0 w-full max-w-sm bg-jabari-surface border border-jabari-border shadow-2xl z-50 p-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <div className="text-[8px] font-black tracking-widest text-jabari-dim p-3 uppercase border-b border-jabari-border mb-2 flex items-center justify-between">
+                   SELECT NEURAL SOURCE
+                   <X className="w-3 h-3 cursor-pointer" onClick={() => setShowDocSelector(false)} />
+                </div>
+                <button 
+                   onClick={() => { setGroundedDocId(null); setShowDocSelector(false); }}
+                   className="w-full flex items-center justify-between p-3 hover:bg-jabari-surface2 rounded-sm text-left transition-colors mb-1"
+                >
+                   <span className="text-[9px] font-bold text-jabari-gray uppercase tracking-widest">UNIVERSAL_VAULT (ALL)</span>
+                   {!groundedDocId && <Check className="w-3 h-3 text-jabari-cream" />}
+                </button>
+                <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                   {sources.map(doc => (
+                      <button 
+                         key={doc.id}
+                         onClick={() => { setGroundedDocId(doc.id); setShowDocSelector(false); }}
+                         className="w-full flex items-center justify-between p-3 hover:bg-jabari-surface2 rounded-sm text-left transition-colors"
+                      >
+                         <span className="text-[10px] text-jabari-nearWhite/80 truncate pr-4">{doc.name}</span>
+                         {groundedDocId === doc.id && <Check className="w-3 h-3 text-jabari-cream" />}
+                      </button>
+                   ))}
+                </div>
+             </div>
+          )}
+
+          <div className="relative group">
+            <button 
+              onClick={() => setShowDocSelector(!showDocSelector)}
+              className={`absolute left-4 top-1/2 -translate-y-1/2 p-2 transition-all ${groundedDocId ? 'text-jabari-cream' : 'text-jabari-dim hover:text-jabari-gray'}`}
+            >
+              <Paperclip className="w-5 h-5" />
+            </button>
+            <input 
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder={groundedDocId ? "Query grounded document..." : "Query the entire vault..."}
+              className="w-full bg-jabari-surface border border-jabari-border p-6 pl-16 pr-16 text-sm text-jabari-nearWhite placeholder:text-jabari-dim focus:outline-none focus:border-jabari-cream transition-all rounded-sm shadow-2xl"
+            />
+            <button 
+              onClick={handleSend}
+              disabled={isLoading || !input.trim()}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-jabari-dim hover:text-jabari-cream disabled:opacity-30 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group"
+            >
+              <span className="hidden group-hover:inline transition-all duration-500">Analyze</span>
+              <Send className="w-5 h-5 text-jabari-cream" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
