@@ -7,6 +7,7 @@ from typing import Optional, Dict, Any
 from app.services.detector import DocumentDetector
 from app.services.extractor import DocumentExtractor
 from app.services.chunker import DocumentChunker
+from app.services.analyzer import HybridAnalyzer
 
 app = FastAPI(title="Jabari AI - Phase 1 Ingestion Engine")
 
@@ -34,6 +35,7 @@ class IngestionResponse(BaseModel):
     needs_ocr: bool
     full_content: str
     chunks: List[DocumentChunk]
+    analysis: Dict[str, Any]
     metadata: Dict[str, Any]
 
 @app.get("/")
@@ -43,8 +45,8 @@ async def health_check():
 @app.post("/ingest", response_model=IngestionResponse)
 async def ingest_document(file: UploadFile = File(...)):
     """
-    Core Ingestion Endpoint: Handles Upload, Detection, Extraction, and Chunking.
-    Stages 1-3 of the pipeline.
+    Core Ingestion Endpoint: Handles Upload, Detection, Extraction, Chunking, and AI Analysis.
+    Stages 1-4 of the pipeline.
     """
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     
@@ -81,13 +83,22 @@ async def ingest_document(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chunking failed: {str(e)}")
     
-    # 5. Prepare Response
+    # 5. Hybrid AI Analysis (Stage 4)
+    try:
+        # Pass the extracted content for deep analysis
+        analysis = HybridAnalyzer.run(extracted_content)
+    except Exception as e:
+        # Fallback to empty analysis if it fails
+        analysis = {"error": f"Analysis failed: {str(e)}", "status": "Failed"}
+
+    # 6. Prepare Response
     return IngestionResponse(
         file_name=file.filename,
         category=detection_result["category"],
         needs_ocr=detection_result["needs_ocr"],
         full_content=extracted_content,
         chunks=chunks,
+        analysis=analysis,
         metadata={
             "mime_type": detection_result["mime_type"],
             "extension": detection_result["extension"],
