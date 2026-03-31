@@ -19,7 +19,7 @@ const DropZone = ({ onUploadSuccess }) => {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('http://localhost:8000/ingest', formData, {
+      const response = await axios.post('http://127.0.0.1:8000/ingest', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);

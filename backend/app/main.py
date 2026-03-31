@@ -23,7 +23,7 @@ app.add_middleware(
 )
 
 # Configuration: Storage folders
-UPLOAD_DIR = os.path.abspath("backend/data/uploads")
+UPLOAD_DIR = os.path.abspath("data/uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Mount the uploads directory to serve original files

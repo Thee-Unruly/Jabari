@@ -26,7 +26,7 @@ const App = () => {
     const iframe = document.getElementById('pdf-viewer');
     if (iframe && activeDoc?.metadata?.path) {
       const fileName = activeDoc.file_name;
-      iframe.src = `http://localhost:8000/files/${fileName}#page=${pageNum}`;
+      iframe.src = `http://127.0.0.1:8000/files/${fileName}#page=${pageNum}`;
     }
   };
 
@@ -152,7 +152,7 @@ const App = () => {
                     <span className="text-[10px] font-black uppercase tracking-widest text-jabari-gray">INTERNAL KNOWLEDGE_BASE CONTENT</span>
                   </div>
                   <a 
-                    href={`http://localhost:8000/files/${activeDoc.file_name}`} 
+                    href={`http://127.0.0.1:8000/files/${activeDoc.file_name}`} 
                     target="_blank" 
                     className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-jabari-dim hover:text-jabari-cream transition-colors"
                   >
@@ -164,7 +164,7 @@ const App = () => {
                       {activeDoc.category === 'pdf' ? (
                         <iframe 
                            id="pdf-viewer"
-                           src={`http://localhost:8000/files/${activeDoc.file_name}#toolbar=0&navpanes=0`} 
+                           src={`http://127.0.0.1:8000/files/${activeDoc.file_name}#toolbar=0&navpanes=0`} 
                            className="w-full h-full border-none invert brightness-[0.7] contrast-[1.2] grayscale"
                            title="Ingestion Content"
                         />
