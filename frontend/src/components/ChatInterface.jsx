@@ -107,21 +107,21 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
           
           {/* Grounding Indicator Pill */}
           {activeDocName && (
-             <div className="absolute -top-10 left-0 flex items-center gap-2 px-3 py-1 bg-jabari-surface border border-jabari-border rounded-sm animate-in slide-in-from-bottom-2">
-                <Database className="w-2 h-2 text-jabari-cream" />
-                <span className="text-[8px] font-black text-jabari-nearWhite uppercase tracking-widest">Grounded: {activeDocName}</span>
-                <button onClick={() => setGroundedDocId(null)} className="ml-1 hover:text-jabari-cream transition-all">
-                   <X className="w-2 h-2" />
+             <div className="absolute -top-12 left-0 flex items-center gap-2 px-4 py-2 bg-jabari-surface border border-jabari-border rounded-sm animate-in slide-in-from-bottom-2 shadow-2xl">
+                <div className="w-1.5 h-1.5 rounded-full bg-jabari-cream" />
+                <span className="text-[9px] font-black text-jabari-nearWhite uppercase tracking-widest leading-none">Grounded Context: {activeDocName}</span>
+                <button onClick={() => setGroundedDocId(null)} className="ml-2 hover:text-jabari-cream transition-all p-1">
+                   <X className="w-3 h-3" />
                 </button>
              </div>
           )}
 
           {/* Doc Selector Popover */}
           {showDocSelector && (
-             <div className="absolute bottom-20 left-0 w-full max-w-sm bg-jabari-surface border border-jabari-border shadow-2xl z-50 p-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div className="text-[8px] font-black tracking-widest text-jabari-dim p-3 uppercase border-b border-jabari-border mb-2 flex items-center justify-between">
+             <div className="absolute bottom-24 left-0 w-full max-w-md bg-jabari-surface border border-jabari-border shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 p-2 animate-in fade-in slide-in-from-bottom-4 duration-300 rounded-sm">
+                <div className="text-[8px] font-black tracking-[0.2em] text-jabari-dim p-3 uppercase border-b border-jabari-border mb-2 flex items-center justify-between">
                    SELECT NEURAL SOURCE
-                   <X className="w-3 h-3 cursor-pointer" onClick={() => setShowDocSelector(false)} />
+                   <X className="w-3 h-3 cursor-pointer hover:text-jabari-cream transition-all" onClick={() => setShowDocSelector(false)} />
                 </div>
                 <button 
                    onClick={() => { setGroundedDocId(null); setShowDocSelector(false); }}
