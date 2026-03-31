@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { 
   Library, Plus, FileText, ChevronLeft, 
   Settings, User, Info, PanelLeftClose, 
@@ -12,11 +13,28 @@ const App = () => {
   const [activeDoc, setActiveDoc] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // Fetch initial Vault Repository from Postgres
+  useEffect(() => {
+    const fetchSources = async () => {
+      try {
+        const response = await axios.get('http://127.0.0.1:8000/sources');
+        // Map backend file_name to display name
+        const mappedSources = response.data.map(d => ({
+           ...d,
+           name: d.file_name
+        }));
+        setSources(mappedSources);
+      } catch (err) {
+        console.error("Vault Recall Failed:", err);
+      }
+    };
+    fetchSources();
+  }, []);
+
   const handleUploadSuccess = (data) => {
     const newDoc = {
-      id: Date.now(),
+      ...data,
       name: data.file_name,
-      ...data
     };
     setSources([newDoc, ...sources]);
     setActiveDoc(newDoc);

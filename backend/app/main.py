@@ -57,12 +57,31 @@ class IngestionResponse(BaseModel):
     analysis: dict[str, Any]
     metadata: dict[str, Any]
 
+@app.get("/sources", response_model=list[dict[str, Any]])
+async def list_sources(db: Session = Depends(get_db)):
+    """
+    Fetches the entire library from the Perpetual Vault.
+    """
+    docs = db.query(Document).order_by(Document.created_at.desc()).all()
+    # Map to frontend format
+    return [
+        {
+            "id": d.id,
+            "file_name": d.filename,
+            "category": d.category,
+            "analysis": {
+                "brief": d.summary,
+                "status": d.status
+            }
+        } for d in docs
+    ]
+
 @app.get("/")
 async def health_check():
-    return {"status": "Jabari Ingestion Engine is online", "phase": "1.0 - The Vault"}
+    return {"status": "Jabari Ingestion Engine is online", "phase": "2.0 - Neural Vault"}
 
 @app.post("/ingest", response_model=IngestionResponse)
-async def ingest_document(file: UploadFile = File(...)):
+async def ingest_document(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """
     Core Ingestion Endpoint: Handles Upload, Detection, Extraction, Chunking, and AI Analysis.
     Stages 1-4 of the pipeline.
@@ -123,18 +142,53 @@ async def ingest_document(file: UploadFile = File(...)):
         print(f"ERROR Stage 5: {str(e)}")
         analysis = {"error": f"Analysis failed: {str(e)}", "status": "Failed"}
 
+    # 6. Database Storage & Neural Indexing (Stage 5/6)
+    db_doc = None
+    try:
+        # Check if document exists
+        db_doc = db.query(Document).filter(Document.filename == file.filename).first()
+        if not db_doc:
+            db_doc = Document(
+                filename=file.filename,
+                category=detection_result["category"],
+                summary=analysis.get("brief", "No summary synthesized."),
+                status=analysis.get("status", "Verified")
+            )
+            db.add(db_doc)
+            db.commit()
+            db.refresh(db_doc)
+            
+            # Neural Embedding of Chunks (Limit to first 50 chunks for safety)
+            print(f"[6/5] Vectorizing {min(len(chunks), 50)} fragments for Semantic Search...")
+            for chunk_data in chunks[:50]:
+                vector = VectorStoreService.embed_text(chunk_data["text"])
+                db_chunk = DocumentChunk(
+                    document_id=db_doc.id,
+                    content=chunk_data["text"],
+                    section_hint=chunk_data["section_hint"],
+                    embedding=vector
+                )
+                db.add(db_chunk)
+            db.commit()
+            print(f"--- INGESTION SUCCESS: Metadata & Vectors Persisted ---")
+    except Exception as e:
+        print(f"DB ERROR: {e}")
+
+    # Prepare Response for Frontend
+    schema_chunks = [DocumentChunkSchema(**c) for c in chunks]
     return IngestionResponse(
         file_name=file.filename,
         category=detection_result["category"],
         needs_ocr=detection_result["needs_ocr"],
         full_content=extracted_content,
-        chunks=chunks,
+        chunks=schema_chunks,
         analysis=analysis,
         metadata={
             "mime_type": detection_result["mime_type"],
             "extension": detection_result["extension"],
             "path": file_path,
-            "chunk_count": len(chunks)
+            "chunk_count": len(chunks),
+            "id": db_doc.id if db_doc else None
         }
     )
 
