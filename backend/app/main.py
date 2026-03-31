@@ -13,13 +13,23 @@ from app.services.chunker import DocumentChunker
 from app.services.analyzer import HybridAnalyzer
 from app.services.vector_store import VectorStoreService
 from app.services.assistant import JabariAssistant
+from app.services.drafter import JabariDrafter
 from app.db import SessionLocal, init_db, Document, DocumentChunk
 
 # Initialize components
 init_db()
 assistant = JabariAssistant()
+drafter = JabariDrafter()
 
 app = FastAPI(title="Jabari AI - Phase 2 Intelligent Vault")
+
+class ChatRequest(BaseModel):
+    message: str
+    document_id: int | None = None
+
+class DraftRequest(BaseModel):
+    document_id: int
+    draft_type: str = "technical_proposal"
 
 # Dependency for DB Session
 def get_db():
@@ -28,10 +38,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-class ChatRequest(BaseModel):
-    message: str
-    document_id: int | None = None
 
 # Configure CORS for the React/Next.js frontend
 app.add_middleware(
@@ -82,9 +88,16 @@ async def list_sources(db: Session = Depends(get_db)):
         } for d in docs
     ]
 
+@app.post("/draft")
+async def generate_draft(request: DraftRequest, db: Session = Depends(get_db)):
+    """
+    Drafting Endpoint: Synthesizes professional bidding artifacts.
+    """
+    return drafter.generate_draft(db, request.document_id, request.draft_type)
+
 @app.get("/")
 async def health_check():
-    return {"status": "Jabari Ingestion Engine is online", "phase": "2.0 - Neural Vault"}
+    return {"status": "Jabari Ingestion Engine is online", "phase": "3.0 - The Unified Coworker"}
 
 @app.post("/ingest", response_model=IngestionResponse)
 async def ingest_document(file: UploadFile = File(...), db: Session = Depends(get_db)):
