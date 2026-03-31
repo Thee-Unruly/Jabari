@@ -14,12 +14,12 @@ class JabariAssistant:
 
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY")
-        self.model = os.getenv("GROQ_MODEL", "llama3-70b-8192")
+        self.model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
         self.client = None
         if self.api_key:
             self.client = Groq(api_key=self.api_key)
 
-    def ask(self, question: str, db: Session, document_id: int | None = None) -> dict:
+    def ask(self, question: str, db: Session, document_id: int | None = None, tender_id: int | None = None) -> dict:
         """
         Main Q&A loop: Retrieve -> Augment -> Generate
         """
@@ -32,6 +32,8 @@ class JabariAssistant:
         
         if document_id:
             query = query.filter(DocumentChunk.document_id == document_id)
+        elif tender_id:
+            query = query.filter(Document.tender_id == tender_id)
             
         # Use pgvector's <-> operator for L2 distance (lowest distance = most similar)
         # Note: We use order_by(DocumentChunk.embedding.l2_distance(question_vector))

@@ -18,6 +18,20 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+class Tender(Base):
+    """
+    Project / Tender metadata grouping multiple vault documents.
+    """
+    __tablename__ = "tenders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    documents = relationship("Document", back_populates="tender", cascade="all, delete-orphan")
+
+
 class Document(Base):
     """
     Metadata for the entire Ingested Document.
@@ -31,6 +45,9 @@ class Document(Base):
     status = Column(String, default="Verified") 
     created_at = Column(DateTime, default=datetime.utcnow)
     
+    tender_id = Column(Integer, ForeignKey("tenders.id"), nullable=True)
+    tender = relationship("Tender", back_populates="documents")
+
     # Relationship to chunks
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
 

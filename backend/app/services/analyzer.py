@@ -53,7 +53,7 @@ class GroqIntakeAgent:
     
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY")
-        self.model = os.getenv("GROQ_MODEL", "llama3-70b-8192")
+        self.model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
         if self.api_key:
             try:
                 # Direct initialization to bypass potential 'proxies' env var issues on Windows

@@ -191,7 +191,7 @@ const s = {
 };
 
 /* ─── Component ─────────────────────────────────────────────── */
-const DropZone = ({ onUploadSuccess }) => {
+const DropZone = ({ onUploadSuccess, activeTenderId }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
@@ -207,6 +207,9 @@ const DropZone = ({ onUploadSuccess }) => {
 
     const formData = new FormData();
     formData.append('file', file);
+    if (activeTenderId) {
+      formData.append('tender_id', activeTenderId.toString());
+    }
 
     try {
       const response = await axios.post('http://127.0.0.1:8500/ingest', formData, {

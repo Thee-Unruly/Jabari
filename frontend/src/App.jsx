@@ -28,22 +28,43 @@ const T = {
 
 const App = () => {
   const [sources, setSources] = useState([]);
+  const [tenders, setTenders] = useState([]);
   const [activeDoc, setActiveDoc] = useState(null);
+  const [activeTenderId, setActiveTenderId] = useState(null);
+  const [showCreateTender, setShowCreateTender] = useState(false);
+  const [newTenderName, setNewTenderName] = useState('');
   const [view, setView] = useState('vault');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('analysis');
 
   useEffect(() => {
-    const fetchSources = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get('http://127.0.0.1:8500/sources');
-        setSources(response.data.map(d => ({ ...d, name: d.file_name })));
+        const [sourceRes, tenderRes] = await Promise.all([
+          axios.get('http://127.0.0.1:8500/sources'),
+          axios.get('http://127.0.0.1:8500/tenders')
+        ]);
+        setSources(sourceRes.data.map(d => ({ ...d, name: d.file_name })));
+        setTenders(tenderRes.data);
       } catch (err) {
-        console.error('Vault Recall Failed:', err);
+        console.error('Data Recall Failed:', err);
       }
     };
-    fetchSources();
+    fetchData();
   }, []);
+
+  const handleCreateTender = async () => {
+    if (!newTenderName.trim()) return;
+    try {
+      const res = await axios.post('http://127.0.0.1:8500/tenders', { name: newTenderName, description: 'Tender Project' });
+      setTenders([res.data, ...tenders]);
+      setActiveTenderId(res.data.id);
+      setNewTenderName('');
+      setShowCreateTender(false);
+    } catch (err) {
+      console.error('Failed to create tender', err);
+    }
+  };
 
   const handleUploadSuccess = (data) => {
     const newDoc = { ...data, name: data.file_name };
@@ -150,12 +171,47 @@ const App = () => {
               background: T.cream,
               flexShrink: 0,
             }}>
-              <div style={{ padding: '1.5rem', flex: 1, overflow: 'hidden' }}>
-                <p style={{ fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint, fontWeight: 500, marginBottom: '1.25rem' }}>
-                  Vault Repository
+              <div style={{ padding: '1.5rem', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                {/* Tenders Section */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <p style={{ fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint, fontWeight: 500, margin: 0 }}>
+                      Projects / Tenders
+                    </p>
+                    <button onClick={() => setShowCreateTender(!showCreateTender)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted, display: 'flex', padding: 0 }}><Plus size={14}/></button>
+                  </div>
+                  
+                  {showCreateTender && (
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                      <input 
+                        value={newTenderName} 
+                        onChange={e => setNewTenderName(e.target.value)} 
+                        autoFocus
+                        placeholder="Project Name..." 
+                        style={{ flex: 1, border: `0.5px solid ${T.border}`, padding: '6px 8px', borderRadius: '4px', background: 'transparent', fontSize: '12px', color: T.ink, outline: 'none', fontFamily: T.sans }} 
+                        onKeyDown={e => e.key === 'Enter' && handleCreateTender()}
+                      />
+                      <button onClick={handleCreateTender} style={{ background: T.ink, color: T.cream, border: 'none', padding: '0 10px', borderRadius: '4px', fontSize: '11px', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Add</button>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <button onClick={() => setActiveTenderId(null)} style={{ width: '100%', textAlign: 'left', background: activeTenderId === null ? T.surface2 : 'transparent', border: `0.5px solid ${activeTenderId === null ? T.border : 'transparent'}`, padding: '8px 10px', borderRadius: '6px', fontSize: '12px', color: activeTenderId === null ? T.ink : T.ink2, fontWeight: activeTenderId === null ? 500 : 400, cursor: 'pointer', transition: 'all 0.15s', fontFamily: T.sans }}>
+                      Universal Vault
+                    </button>
+                    {tenders.map(t => (
+                      <button key={t.id} onClick={() => setActiveTenderId(t.id)} style={{ width: '100%', textAlign: 'left', background: activeTenderId === t.id ? T.surface2 : 'transparent', border: `0.5px solid ${activeTenderId === t.id ? T.border : 'transparent'}`, padding: '8px 10px', borderRadius: '6px', fontSize: '12px', color: activeTenderId === t.id ? T.ink : T.ink2, fontWeight: activeTenderId === t.id ? 500 : 400, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: T.sans }}>
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <p style={{ fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint, fontWeight: 500, marginBottom: '1rem' }}>
+                  Vaulted Sources
                 </p>
-                <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {sources.map((doc) => (
+                <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {sources.filter(d => activeTenderId ? d.tender_id === activeTenderId : true).map((doc) => (
                     <button
                       key={doc.id}
                       onClick={() => setActiveDoc(doc)}
@@ -254,7 +310,7 @@ const App = () => {
                           Ground your bid intelligence in a secure, AI-indexed vault.
                         </p>
                       </div>
-                      <DropZone onUploadSuccess={handleUploadSuccess} />
+                      <DropZone onUploadSuccess={handleUploadSuccess} activeTenderId={activeTenderId} />
                     </div>
                   </div>
                 ) : (
@@ -305,7 +361,7 @@ const App = () => {
                       <div style={{ flex: 1, overflow: 'hidden' }}>
                         {activeTab === 'analysis'
                           ? <AnalysisSidebar data={activeDoc} onJumpToPage={jumpToPage} />
-                          : <ChatInterface documentId={activeDoc.id} />}
+                          : <ChatInterface documentId={activeDoc.id} tenderId={activeTenderId} tenderName={tenders.find(t=>t.id===activeTenderId)?.name} />}
                       </div>
                     </div>
                   </div>
@@ -325,7 +381,7 @@ const App = () => {
             </header>
             <div style={{ flex: 1, maxWidth: '900px', margin: '0 auto', width: '100%', padding: '2rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <div style={{ flex: 1, borderRadius: '8px', border: `0.5px solid ${T.border}`, overflow: 'hidden' }}>
-                <ChatInterface documentId={activeDoc?.id} initialSources={sources} />
+                <ChatInterface documentId={activeDoc?.id} tenderId={activeTenderId} tenderName={tenders.find(t=>t.id===activeTenderId)?.name} initialSources={sources.filter(d => activeTenderId ? d.tender_id === activeTenderId : true)} />
               </div>
             </div>
           </div>

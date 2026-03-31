@@ -42,46 +42,95 @@ class ExportEngine:
 
         # 3. Process Content (Basic Markdown -> Word styling)
         lines = content.split('\n')
+        in_table = False
+        current_table = None
+        
         for line in lines:
             line = line.strip()
-            if not line:
-                doc.add_paragraph()
-                continue
-                
-            # Headers
-            if line.startswith('### '):
-                h = doc.add_heading(line[4:], level=3)
-                h.style.font.name = 'Arial'
-                h.style.font.color.rgb = RGBColor(0, 0, 0)
-            elif line.startswith('## '):
-                h = doc.add_heading(line[3:], level=2)
-                h.style.font.name = 'Arial'
-                h.style.font.color.rgb = RGBColor(0, 0, 0)
-            elif line.startswith('# '):
-                h = doc.add_heading(line[2:], level=1)
-                h.style.font.name = 'Arial'
-                h.style.font.color.rgb = RGBColor(0, 0, 0)
             
-            # Bullet points
-            elif line.startswith('- ') or line.startswith('* '):
-                p = doc.add_paragraph(style='List Bullet')
-                # Process basic bolding (e.g., **text**)
-                text = line[2:]
-                parts = text.split('**')
-                for i, part in enumerate(parts):
-                    if i % 2 == 1:
-                        p.add_run(part).bold = True
-                    else:
-                        p.add_run(part)
+            # Table handling
+            if line.startswith('|') and line.endswith('|'):
+                # Extract cells
+                cells = [c.strip() for c in line.split('|')[1:-1]]
+                
+                # Check if it's a separator row (e.g. |---|---|)
+                if all(c.replace('-', '').strip() == '' for c in cells):
+                    continue # Skip separator
+                
+                if not in_table:
+                    # Start a new table
+                    in_table = True
+                    current_table = doc.add_table(rows=1, cols=len(cells))
+                    current_table.style = 'Table Grid'
+                    row = current_table.rows[0]
+                    for i, text in enumerate(cells):
+                        if i < len(row.cells):
+                            row.cells[i].text = text.replace('**', '') # Simple cleanup for header
+                            if len(row.cells[i].paragraphs) > 0 and len(row.cells[i].paragraphs[0].runs) > 0:
+                                row.cells[i].paragraphs[0].runs[0].bold = True
+                else:
+                    # Add row to existing table
+                    row = current_table.add_row()
+                    for i, text in enumerate(cells):
+                        if i < len(row.cells):
+                            # Bold parser for table cells
+                            parts = text.split('**')
+                            p = row.cells[i].paragraphs[0]
+                            for j, part in enumerate(parts):
+                                if j % 2 == 1:
+                                    p.add_run(part).bold = True
+                                else:
+                                    p.add_run(part)
+                continue
             else:
-                # Normal paragraph (process bold text)
-                p = doc.add_paragraph()
-                parts = line.split('**')
-                for i, part in enumerate(parts):
-                    if i % 2 == 1:
-                        p.add_run(part).bold = True
+                if in_table:
+                    # End table block
+                    in_table = False
+                    current_table = None
+                    doc.add_paragraph() # Spacer after table
+                
+                if not line:
+                    doc.add_paragraph()
+                    continue
+                
+                # Headers
+                if line.startswith('### '):
+                    h = doc.add_heading(line[4:], level=3)
+                    h.style.font.name = 'Arial'
+                    h.style.font.color.rgb = RGBColor(0, 0, 0)
+                elif line.startswith('## '):
+                    h = doc.add_heading(line[3:], level=2)
+                    h.style.font.name = 'Arial'
+                    h.style.font.color.rgb = RGBColor(0, 0, 0)
+                elif line.startswith('# '):
+                    h = doc.add_heading(line[2:], level=1)
+                    h.style.font.name = 'Arial'
+                    h.style.font.color.rgb = RGBColor(0, 0, 0)
+                
+                # Bullet points
+                elif line.startswith('- ') or line.startswith('* '):
+                    p = doc.add_paragraph(style='List Bullet')
+                    text = line[2:]
+                    parts = text.split('**')
+                    for i, part in enumerate(parts):
+                        if i % 2 == 1:
+                            p.add_run(part).bold = True
+                        else:
+                            p.add_run(part)
+                else:
+                    # Normal paragraph or blockquote
+                    if line.startswith('> '):
+                        p = doc.add_paragraph(style='Intense Quote')
+                        line = line[2:]
                     else:
-                        p.add_run(part)
+                        p = doc.add_paragraph()
+                        
+                    parts = line.split('**')
+                    for i, part in enumerate(parts):
+                        if i % 2 == 1:
+                            p.add_run(part).bold = True
+                        else:
+                            p.add_run(part)
 
         # 4. Add Footer
         footer = doc.sections[0].footer

@@ -4,6 +4,8 @@ import {
   FileText, Wand2, Download, Copy, Loader2,
   AlertCircle, CheckCircle2, Check, ChevronDown
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 /* ─── Jabari cream tokens ───────────────────────────────────── */
 const T = {
@@ -327,12 +329,41 @@ const DraftsView = ({ sources = [] }) => {
                     Drafting Engine Engaged…
                   </p>
                 </div>
+              ) : draft?.error ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '12px', color: '#c45a5a' }}>
+                  <AlertCircle style={{ width: '32px', height: '32px' }} />
+                  <p style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    Neural Synthesis Failed
+                  </p>
+                  <p style={{ fontSize: '13px', textAlign: 'center', fontFamily: T.sans, opacity: 0.8 }}>
+                    {draft.error}
+                  </p>
+                </div>
               ) : (
                 <div style={{
                   fontFamily: T.serif, fontSize: '15px', lineHeight: 1.85,
-                  color: T.ink2, whiteSpace: 'pre-wrap',
+                  color: T.ink2,
                 }}>
-                  {draft?.content}
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h1: ({node, ...props}) => <h1 style={{fontSize: '28px', fontWeight: 600, marginTop: '24px', marginBottom: '16px', color: T.ink, fontStyle: 'normal'}} {...props} />,
+                      h2: ({node, ...props}) => <h2 style={{fontSize: '22px', fontWeight: 600, marginTop: '24px', marginBottom: '16px', color: T.ink, fontStyle: 'normal'}} {...props} />,
+                      h3: ({node, ...props}) => <h3 style={{fontSize: '18px', fontWeight: 600, marginTop: '20px', marginBottom: '12px', color: T.ink, fontStyle: 'normal'}} {...props} />,
+                      ul: ({node, ...props}) => <ul style={{paddingLeft: '24px', marginBottom: '16px', listStyleType: 'disc'}} {...props} />,
+                      ol: ({node, ...props}) => <ol style={{paddingLeft: '24px', marginBottom: '16px', listStyleType: 'decimal'}} {...props} />,
+                      li: ({node, ...props}) => <li style={{marginBottom: '8px'}} {...props} />,
+                      p: ({node, ...props}) => <p style={{marginBottom: '16px'}} {...props} />,
+                      strong: ({node, ...props}) => <strong style={{fontWeight: 700, color: T.ink}} {...props} />,
+                      em: ({node, ...props}) => <em style={{fontStyle: 'italic'}} {...props} />,
+                      table: ({node, ...props}) => <div style={{overflowX: 'auto', marginBottom: '24px', fontFamily: T.sans}}><table style={{width: '100%', borderCollapse: 'collapse', border: `1px solid ${T.border}`}} {...props} /></div>,
+                      th: ({node, ...props}) => <th style={{padding: '12px', backgroundColor: T.surface, border: `1px solid ${T.border}`, textAlign: 'left', fontWeight: 600, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: T.ink}} {...props} />,
+                      td: ({node, ...props}) => <td style={{padding: '12px', border: `1px solid ${T.border}`, fontSize: '13px'}} {...props} />,
+                      blockquote: ({node, ...props}) => <blockquote style={{borderLeft: `2px solid ${T.muted}`, paddingLeft: '16px', fontStyle: 'italic', color: T.muted, margin: '24px 0'}} {...props} />
+                    }}
+                  >
+                    {draft?.content || ''}
+                  </ReactMarkdown>
                 </div>
               )}
             </div>

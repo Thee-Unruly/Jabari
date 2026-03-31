@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 import shutil
 from typing import Any
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -15,7 +15,7 @@ from app.services.vector_store import VectorStoreService
 from app.services.assistant import JabariAssistant
 from app.services.drafter import JabariDrafter
 from app.services.exporter import ExportEngine
-from app.db import SessionLocal, init_db, Document, DocumentChunk
+from app.db import SessionLocal, init_db, Document, DocumentChunk, Tender
 from fastapi.responses import StreamingResponse
 
 # Initialize components
@@ -28,6 +28,11 @@ app = FastAPI(title="Jabari AI - Phase 3 Deliverability")
 class ChatRequest(BaseModel):
     message: str
     document_id: int | None = None
+    tender_id: int | None = None
+
+class TenderCreate(BaseModel):
+    name: str
+    description: str | None = None
 
 class DraftRequest(BaseModel):
     document_id: int
@@ -75,6 +80,40 @@ class IngestionResponse(BaseModel):
     analysis: dict[str, Any]
     metadata: dict[str, Any]
 
+@app.get("/tenders")
+def list_tenders(db: Session = Depends(get_db)):
+    """ List all grouped tender projects """
+    tenders = db.query(Tender).order_by(Tender.created_at.desc()).all()
+    return [{
+        "id": t.id,
+        "name": t.name,
+        "description": t.description,
+        "document_count": len(t.documents)
+    } for t in tenders]
+
+@app.post("/tenders")
+def create_tender(request: TenderCreate, db: Session = Depends(get_db)):
+    """ Create a new grouped tender project """
+    db_tender = Tender(name=request.name, description=request.description)
+    db.add(db_tender)
+    try:
+        db.commit()
+        db.refresh(db_tender)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Tender name already exists or invalid.")
+    return db_tender
+
+@app.post("/chat")
+async def chat_with_docs(request: ChatRequest, db: Session = Depends(get_db)):
+    """ Phase 2: Intelligent Chat Endpoint """
+    return assistant.ask(
+        request.message, 
+        db=db, 
+        document_id=request.document_id,
+        tender_id=request.tender_id
+    )
+
 @app.get("/sources", response_model=list[dict[str, Any]])
 async def list_sources(db: Session = Depends(get_db)):
     """
@@ -85,6 +124,7 @@ async def list_sources(db: Session = Depends(get_db)):
     return [
         {
             "id": d.id,
+            "tender_id": d.tender_id,
             "file_name": d.filename,
             "category": d.category,
             "analysis": {
@@ -123,7 +163,11 @@ async def health_check():
     return {"status": "Jabari Ingestion Engine is online", "phase": "3.0 - The Unified Coworker"}
 
 @app.post("/ingest", response_model=IngestionResponse)
-async def ingest_document(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def ingest_document(
+    file: UploadFile = File(...), 
+    tender_id: int | None = Form(None),
+    db: Session = Depends(get_db)
+):
     """
     Core Ingestion Endpoint: Handles Upload, Detection, Extraction, Chunking, and AI Analysis.
     Stages 1-4 of the pipeline.
@@ -194,7 +238,8 @@ async def ingest_document(file: UploadFile = File(...), db: Session = Depends(ge
                 filename=file.filename,
                 category=detection_result["category"],
                 summary=analysis.get("brief", "No summary synthesized."),
-                status=analysis.get("status", "Verified")
+                status=analysis.get("status", "Verified"),
+                tender_id=tender_id
             )
             db.add(db_doc)
             db.commit()

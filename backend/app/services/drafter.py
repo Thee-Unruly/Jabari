@@ -13,7 +13,7 @@ class JabariDrafter:
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY")
         self.client = Groq(api_key=self.api_key)
-        self.model = os.getenv("GROQ_MODEL", "llama3-70b-8192")
+        self.model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
     def generate_draft(self, db: Session, document_id: int, draft_type: str = "technical_proposal") -> dict:
         """

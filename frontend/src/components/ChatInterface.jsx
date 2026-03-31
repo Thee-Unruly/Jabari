@@ -21,7 +21,7 @@ const T = {
   sans: "'DM Sans', system-ui, sans-serif",
 };
 
-const ChatInterface = ({ documentId, initialSources = [] }) => {
+const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }) => {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Vault synchronised. Use the clip icon to ground your analysis to a specific document.' }
   ]);
@@ -65,6 +65,7 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
       const response = await axios.post('http://127.0.0.1:8500/chat', {
         message: input,
         document_id: groundedDocId,
+        tender_id: tenderId,
       });
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -347,7 +348,7 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
         background: T.cream,
       }}>
         {/* Grounding pill */}
-        {activeDocName && (
+        {(activeDocName || tenderName) && (
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -365,14 +366,16 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
           }}>
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: T.cream, flexShrink: 0 }} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {activeDocName}
+              {activeDocName || tenderName}
             </span>
-            <button
-              onClick={() => setGroundedDocId(null)}
-              style={{ background: 'none', border: 'none', color: T.cream, cursor: 'pointer', display: 'flex', padding: '0', flexShrink: 0, opacity: 0.7 }}
-            >
-              <X style={{ width: '12px', height: '12px' }} />
-            </button>
+            {activeDocName && (
+              <button
+                onClick={() => setGroundedDocId(null)}
+                style={{ background: 'none', border: 'none', color: T.cream, cursor: 'pointer', display: 'flex', padding: '0', flexShrink: 0, opacity: 0.7 }}
+              >
+                <X style={{ width: '12px', height: '12px' }} />
+              </button>
+            )}
           </div>
         )}
 
@@ -410,7 +413,7 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={groundedDocId ? 'Ask about this document…' : 'Ask anything across your vault…'}
+            placeholder={groundedDocId ? 'Ask about this document…' : tenderId ? 'Ask about this project…' : 'Ask anything across your vault…'}
             style={{
               flex: 1,
               padding: '13px 16px',
