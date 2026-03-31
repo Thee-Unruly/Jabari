@@ -197,8 +197,7 @@ const DropZone = ({ onUploadSuccess, activeTenderId }) => {
   const [error, setError] = useState(null);
   const [hovered, setHovered] = useState(false);
 
-  const onFileChange = async (e) => {
-    const file = e.target.files[0];
+  const processFile = async (file) => {
     if (!file) return;
 
     setIsUploading(true);
@@ -228,6 +227,29 @@ const DropZone = ({ onUploadSuccess, activeTenderId }) => {
     }
   };
 
+  const onFileChange = (e) => processFile(e.target.files[0]);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setHovered(false);
+    if (!isUploading && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isUploading) setHovered(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setHovered(false);
+  };
+
   const zoneStyle = {
     ...s.zone(isUploading, !!error),
     ...(hovered && !isUploading && !error ? s.zoneHoverPatch : {}),
@@ -236,9 +258,13 @@ const DropZone = ({ onUploadSuccess, activeTenderId }) => {
   return (
     <div style={s.wrapper}>
       <label
+        htmlFor="jabari-file-upload"
         style={zoneStyle}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         {/* ── Uploading ── */}
         {isUploading && (
@@ -278,14 +304,15 @@ const DropZone = ({ onUploadSuccess, activeTenderId }) => {
             </div>
             <p style={s.headline}>Deposit Tender Intelligence</p>
             <p style={s.eyebrow}>PDF · DOCX · Scan · Image</p>
-            <button style={s.cta} onMouseOver={e => e.currentTarget.style.opacity = '0.82'}
+            <div style={s.cta} onMouseOver={e => e.currentTarget.style.opacity = '0.82'}
               onMouseOut={e => e.currentTarget.style.opacity = '1'}>
               Upload to Vault
-            </button>
+            </div>
           </div>
         )}
 
         <input
+          id="jabari-file-upload"
           type="file"
           style={{ display: 'none' }}
           onChange={onFileChange}
