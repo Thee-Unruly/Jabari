@@ -1,68 +1,93 @@
-import React, { useState } from 'react';
-import { Upload, File, Loader2 } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
 import axios from 'axios';
+import { Upload, File, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 const DropZone = ({ onUploadSuccess }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
 
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
+  const onFileChange = async (e) => {
+    const file = e.target.files[0];
     if (!file) return;
 
     setIsUploading(true);
+    setProgress(0);
     setError(null);
 
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      // Points to our FastAPI backend
       const response = await axios.post('http://localhost:8000/ingest', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setProgress(percentCompleted);
+        }
       });
+
       onUploadSuccess(response.data);
+      setIsUploading(false);
     } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.detail || "Upload failed. Is the backend running?");
-    } finally {
+      setError(err.response?.data?.detail || 'Vault Ingestion Failed');
       setIsUploading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full p-8">
+    <div className="w-full max-w-2xl mx-auto">
       <label 
         className={`
-          w-full max-w-2xl h-64 flex flex-col items-center justify-center 
-          border-2 border-dashed rounded-2xl cursor-pointer
-          transition-all duration-300
-          ${isUploading ? 'bg-slate-900 border-blue-500' : 'bg-slate-950 border-white/10 hover:border-blue-500 hover:bg-slate-900'}
+          flex flex-col items-center justify-center w-full h-80 
+          border-2 border-dashed rounded-lg cursor-pointer
+          transition-all duration-300 group
+          ${isUploading ? 'bg-jabari-surface border-jabari-gray/20' : 'bg-jabari-surface/50 border-jabari-border hover:bg-jabari-surface hover:border-jabari-gray/30'}
         `}
       >
-        {!isUploading ? (
-          <>
-            <div className="p-4 bg-blue-500/10 rounded-full mb-4">
-              <Upload className="w-8 h-8 text-blue-400" />
+        <div className="flex flex-col items-center justify-center pt-5 pb-6 px-12 text-center">
+          {isUploading ? (
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-12 h-12 text-jabari-cream animate-spin mb-6" />
+              <p className="text-sm font-black uppercase tracking-widest text-jabari-cream mb-2">INTELLIGENCE INGESTION IN PROGRESS</p>
+              <p className="text-[10px] font-bold text-jabari-gray uppercase tracking-widest">{progress}% VAULT_SYNCHRONIZATION</p>
+              
+              <div className="w-64 h-1 bg-jabari-border mt-8 rounded-full overflow-hidden">
+                <div 
+                   className="h-full bg-jabari-cream transition-all duration-300"
+                   style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
-            <p className="text-xl font-medium text-white mb-2">Initialize your Vault</p>
-            <p className="text-sm text-white/50">Drop your PDF or Word Tenders here</p>
-            <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.docx" />
-          </>
-        ) : (
-          <div className="flex flex-col items-center">
-            <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-            <p className="text-lg font-medium text-white">The Vault is Analyzing...</p>
-            <p className="text-sm text-white/50 mt-2 italic font-serif">OCR & Semantic Parsing in progress</p>
-          </div>
-        )}
+          ) : error ? (
+            <div className="flex flex-col items-center">
+              <AlertCircle className="w-12 h-12 text-jabari-cream mb-6" />
+              <p className="text-sm font-black uppercase tracking-widest text-jabari-cream mb-2">VAULT_ACCESS ERROR</p>
+              <p className="text-xs text-jabari-dim uppercase tracking-widest max-w-xs">{error}</p>
+              <p className="mt-8 text-[10px] font-black underline cursor-pointer text-jabari-gray" onClick={() => setError(null)}>RETRY INGESTION_CHAIN</p>
+            </div>
+          ) : (
+            <>
+              <div className="w-16 h-16 rounded-full bg-jabari-surface2 border border-jabari-border flex items-center justify-center mb-8 group-hover:border-jabari-gray/30 transition-all">
+                <Upload className="w-6 h-6 text-jabari-dim group-hover:text-jabari-gray" />
+              </div>
+              <p className="text-lg font-serif font-light text-jabari-nearWhite mb-2 italic">Deposit Tender Intelligence</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-jabari-dim mb-8">PDF // DOCX // SCAN // IMAGE</p>
+              
+              <div className="mt-4 px-10 py-5 rounded-sm bg-jabari-cream text-jabari-ink font-black text-xs uppercase tracking-widest transition-all group-hover:bg-jabari-white">
+                Upload to Secure Vault
+              </div>
+            </>
+          )}
+        </div>
+        <input type="file" className="hidden" onChange={onFileChange} disabled={isUploading} />
       </label>
       
-      {error && (
-        <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
-          {error}
-        </div>
-      )}
+      <div className="mt-8 flex items-center justify-center gap-12 opacity-10">
+         <div className="flex items-center gap-3"><CheckCircle2 className="w-3 h-3"/><span className="text-[9px] font-bold uppercase tracking-widest uppercase">Encryption_Verified</span></div>
+         <div className="flex items-center gap-3"><CheckCircle2 className="w-3 h-3"/><span className="text-[9px] font-bold uppercase tracking-widest uppercase">OCR_Pipeline_Ready</span></div>
+         <div className="flex items-center gap-3"><CheckCircle2 className="w-3 h-3"/><span className="text-[9px] font-bold uppercase tracking-widest uppercase">AI_Model_Llama-3-Initialized</span></div>
+      </div>
     </div>
   );
 };

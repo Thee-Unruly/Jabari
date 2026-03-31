@@ -1,5 +1,6 @@
+from __future__ import annotations
 import re
-from typing import List, Dict, Any
+from typing import Any
 
 class DocumentChunker:
     """
@@ -8,7 +9,7 @@ class DocumentChunker:
     """
 
     @staticmethod
-    def chunk_text(text: str, max_chars: int = 2000, overlap: int = 200) -> List[Dict[str, Any]]:
+    def chunk_text(text: str, max_chars: int = 2000, overlap: int = 200) -> list[dict[str, Any]]:
         """
         Main entry point for chunking.
         1. Splitting by Headings ([H1], [H2], [H3]).
@@ -81,7 +82,7 @@ class DocumentChunker:
         return chunks
 
     @staticmethod
-    def _sliding_window_split(text: str, k: int, overlap: int) -> List[str]:
+    def _sliding_window_split(text: str, k: int, overlap: int) -> list[str]:
         """
         Simple character-based sliding window for massive blocks of text.
         """

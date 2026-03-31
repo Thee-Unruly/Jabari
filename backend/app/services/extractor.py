@@ -1,7 +1,8 @@
+from __future__ import annotations
 import os
 import pdfplumber
 import docx
-from typing import List, Dict, Any
+from typing import Any
 from pdf2image import convert_from_path
 import pytesseract
 from PIL import Image

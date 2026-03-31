@@ -1,7 +1,8 @@
+from __future__ import annotations
 import re
 import os
 import json
-from typing import Dict, Any, List, Optional
+from typing import Any
 from groq import Groq
 from dotenv import load_dotenv
 
@@ -15,7 +16,7 @@ class RegexHeuristics:
     """
     
     @staticmethod
-    def extract_basic_info(text: str) -> Dict[str, Any]:
+    def extract_basic_info(text: str) -> dict[str, Any]:
         # Simple patterns (can be expanded)
         tender_id_pattern = r'(?:Tender|RFP|Contract)[\s\w]*?(?:No\.?|Number|ID)[\s:]*?([A-Z0-9\/\-]{5,})'
         due_date_pattern = r'(?:Closing|Due|Submission)[\s]*(?:Date|Time)[\s:]*?(\d{1,2}(?:st|nd|rd|th)?[\s]?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\w]*[\s]?\d{4})'
@@ -52,13 +53,14 @@ class GroqIntakeAgent:
     
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY")
+        self.model = os.getenv("GROQ_MODEL", "llama3-70b-8192")
         if self.api_key:
             self.client = Groq(api_key=self.api_key)
         else:
             self.client = None
             print("Warning: GROQ_API_KEY not found. LLM analysis will be skipped.")
 
-    def analyze_deeply(self, context_text: str, current_meta: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze_deeply(self, context_text: str, current_meta: dict[str, Any]) -> dict[str, Any]:
         """
         Uses Llama-3 to extract structured info from the first 15k chars.
         """
@@ -92,7 +94,7 @@ class GroqIntakeAgent:
         try:
             chat_completion = self.client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
-                model="llama3-8b-8192",
+                model=self.model,
                 response_format={"type": "json_object"}
             )
             return json.loads(chat_completion.choices[0].message.content)
@@ -106,7 +108,7 @@ class HybridAnalyzer:
     """
     
     @staticmethod
-    def run(extracted_text: str) -> Dict[str, Any]:
+    def run(extracted_text: str) -> dict[str, Any]:
         # 1. Run Regex Heuristics
         meta = RegexHeuristics.extract_basic_info(extracted_text)
         

@@ -1,10 +1,11 @@
+from __future__ import annotations
 import os
 import shutil
+from typing import Any
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
 from app.services.detector import DocumentDetector
 from app.services.extractor import DocumentExtractor
 from app.services.chunker import DocumentChunker
@@ -31,16 +32,16 @@ app.mount("/files", StaticFiles(directory=UPLOAD_DIR), name="files")
 class DocumentChunk(BaseModel):
     text: str
     section_hint: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 class IngestionResponse(BaseModel):
     file_name: str
     category: str
     needs_ocr: bool
     full_content: str
-    chunks: List[DocumentChunk]
-    analysis: Dict[str, Any]
-    metadata: Dict[str, Any]
+    chunks: list[DocumentChunk]
+    analysis: dict[str, Any]
+    metadata: dict[str, Any]
 
 @app.get("/")
 async def health_check():

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Library, Plus, FileText, ChevronLeft, 
   Settings, User, Info, PanelLeftClose, 
-  PanelLeftOpen, ExternalLink
+  PanelLeftOpen, ExternalLink, Search
 } from 'lucide-react';
 import DropZone from './components/DropZone';
 import AnalysisSidebar from './components/AnalysisSidebar';
@@ -23,7 +23,6 @@ const App = () => {
   };
 
   const jumpToPage = (pageNum) => {
-    // PDF Viewer iframe logic
     const iframe = document.getElementById('pdf-viewer');
     if (iframe && activeDoc?.metadata?.path) {
       const fileName = activeDoc.file_name;
@@ -32,53 +31,54 @@ const App = () => {
   };
 
   return (
-    <div className="flex h-screen bg-jabari-bg text-jabari-cream overflow-hidden selection:bg-blue-500/30">
-      {/* 1. Left Sidebar: Source Gallery (Matching Landing Page Table Style) */}
+    <div className="flex h-screen bg-jabari-bg text-jabari-nearWhite overflow-hidden selection:bg-jabari-cream selection:text-jabari-ink">
+      {/* 1. Left Sidebar: Document Vault (Monochromatic Desk Style) */}
       <aside 
         className={`
-          bg-jabari-card border-r border-white/5 transition-all duration-300 flex flex-col
+          bg-jabari-surface border-r border-jabari-border transition-all duration-300 flex flex-col
           ${sidebarOpen ? 'w-80' : 'w-0 opacity-0 overflow-hidden'}
         `}
       >
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-2xl">
-              <span className="font-black text-black text-lg">J</span>
-            </div>
-            <div>
-              <h1 className="font-black tracking-tighter text-2xl leading-none">JABARI</h1>
-              <span className="text-[9px] font-black tracking-widest text-white/20 uppercase">Intelligence Vault</span>
-            </div>
+             <div className="w-10 h-10 rounded-sm bg-jabari-cream flex items-center justify-center">
+                <span className="font-serif font-black text-jabari-ink text-lg italic">J</span>
+             </div>
+             <div>
+                <h1 className="font-black tracking-tighter text-2xl leading-none">JABARI</h1>
+                <span className="text-[9px] font-black tracking-widest text-jabari-dim uppercase">SECURE VAULT</span>
+             </div>
           </div>
         </div>
 
         <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-          <div className="text-[10px] uppercase tracking-widest text-[#a1a1a1] font-black mb-6 px-2 opacity-50">Document Library</div>
+          <div className="text-[10px] uppercase tracking-widest text-jabari-dim font-black mb-6 px-1">VAULT REPOSITORY</div>
           {sources.length === 0 ? (
-            <div className="px-2 py-8 border border-white/5 rounded-2xl bg-white/[0.02] text-center">
-              <p className="text-[10px] text-white/20 font-black uppercase tracking-widest px-4">Your vault is currently empty.</p>
+            <div className="p-6 border border-jabari-border border-dashed rounded-lg text-center">
+              <p className="text-[10px] text-jabari-dim font-bold uppercase tracking-widest leading-relaxed">No vaulted sources currently identified.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {sources.map((doc) => (
                 <button
                   key={doc.id}
                   onClick={() => setActiveDoc(doc)}
                   className={`
-                    w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group text-left border
-                    ${activeDoc?.id === doc.id ? 'bg-white/5 border-white/10 shadow-xl' : 'bg-transparent border-transparent hover:bg-white/[0.02]'}
+                    w-full flex items-center gap-4 p-4 rounded-sm transition-all duration-300 group text-left border
+                    ${activeDoc?.id === doc.id ? 'bg-jabari-surface2 border-jabari-gray/20' : 'bg-transparent border-transparent hover:bg-jabari-surface2/40 hover:border-jabari-border'}
                   `}
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${activeDoc?.id === doc.id ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/20 group-hover:text-white/40'}`}>
-                    <FileText className="w-5 h-5" />
-                  </div>
+                  <FileText className={`w-5 h-5 ${activeDoc?.id === doc.id ? 'text-jabari-cream' : 'text-jabari-dim group-hover:text-jabari-gray'}`} />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm truncate font-bold tracking-tight ${activeDoc?.id === doc.id ? 'text-white' : 'text-white/60'}`}>
+                    <p className={`text-sm truncate font-bold ${activeDoc?.id === doc.id ? 'text-jabari-white' : 'text-jabari-gray'}`}>
                       {doc.name}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
-                       <span className="px-2 py-0.5 rounded-full bg-white/5 text-[8px] font-black text-white/40 border border-white/5 uppercase">{doc.category || 'RFP'}</span>
-                       <span className={`w-1.5 h-1.5 rounded-full ${doc.analysis?.status === 'Verified' ? 'bg-jabari-risk-none' : 'bg-jabari-risk-medium'}`} />
+                    <div className="flex items-center gap-2 mt-1 opacity-50 uppercase text-[8px] font-black tracking-widest">
+                       <span>{doc.category || 'RFP'}</span>
+                       <div className="w-1 h-1 rounded-full bg-jabari-gray/40" />
+                       <span className={doc.analysis?.status === 'Verified' ? 'text-jabari-white' : 'text-jabari-gray'}>
+                         {doc.analysis?.status || 'PENDING'}
+                       </span>
                     </div>
                   </div>
                 </button>
@@ -87,42 +87,41 @@ const App = () => {
           )}
         </div>
 
-        <div className="p-6 border-t border-white/5">
+        <div className="p-6 border-t border-jabari-border">
            <button 
              onClick={() => setActiveDoc(null)}
-             className="w-full py-4 rounded-2xl bg-white text-black font-black text-[11px] uppercase tracking-widest hover:bg-white/90 transition-all flex items-center justify-center gap-2"
+             className="w-full py-4 rounded-sm bg-jabari-cream text-jabari-ink font-black text-[11px] uppercase tracking-widest hover:bg-jabari-white transition-all flex items-center justify-center gap-2"
            >
-             <Plus className="w-4 h-4" /> New Ingestion
+             <Plus className="w-4 h-4" /> RE-INITIALIZE VAULT
            </button>
         </div>
       </aside>
 
       {/* 2. Main Content Area */}
       <main className="flex-1 flex flex-col relative bg-jabari-bg">
-        {/* Top Navbar */}
-        <header className="h-20 border-b border-white/5 flex items-center justify-between px-10 bg-jabari-bg/80 backdrop-blur-xl z-10">
-          <div className="flex items-center gap-6">
+        {/* Monochromatic Top Bar */}
+        <header className="h-20 border-b border-jabari-border flex items-center justify-between px-10 bg-jabari-bg z-10">
+          <div className="flex items-center gap-8">
             <button 
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-white/5 rounded-xl text-white/40 transition-colors"
+              className="p-1 hover:bg-jabari-surface2 rounded text-jabari-dim transition-colors"
             >
               {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
             </button>
             {activeDoc && (
               <div className="flex items-center gap-3">
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Active Source</span>
-                <div className="w-1 h-1 rounded-full bg-white/20" />
-                <span className="font-serif font-light text-xl tracking-tight text-jabari-cream/90 italic">{activeDoc.name}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-jabari-dim">SOURCE IDENTITY</span>
+                <span className="font-serif font-light text-xl tracking-tight text-jabari-white italic">{activeDoc.name}</span>
               </div>
             )}
           </div>
           
           <div className="flex items-center gap-6">
-             <div className="px-4 py-2 rounded-full bg-emerald-500/5 border border-emerald-500/10 text-[9px] font-black text-emerald-500 uppercase tracking-widest">
-               VAULT FOUNDATION ONLINE
+             <div className="px-4 py-2 bg-jabari-surface border border-jabari-border text-[9px] font-black text-jabari-gray uppercase tracking-widest">
+               PHASE 1: SECURE VAULT ACCESS
              </div>
-             <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group hover:border-white/20 transition-all cursor-pointer">
-               <User className="w-5 h-5 text-white/40 group-hover:text-white/70" />
+             <div className="w-10 h-10 rounded-sm bg-jabari-surface border border-jabari-border flex items-center justify-center hover:bg-jabari-surface2 transition-all cursor-pointer group">
+               <User className="w-5 h-5 text-jabari-dim group-hover:text-jabari-gray" />
              </div>
           </div>
         </header>
@@ -136,48 +135,50 @@ const App = () => {
                    <h2 className="text-6xl font-serif font-light tracking-tight text-jabari-cream mb-6 italic leading-tight">
                      Turn Days of Review <br/>Into Minutes
                    </h2>
-                   <p className="text-white/40 text-lg leading-relaxed max-w-xl mx-auto font-light">
-                     Streamline large-scale tender organization, review, and analysis with Vault.
+                   <p className="text-jabari-gray text-lg leading-relaxed max-w-xl mx-auto font-light">
+                     Streamline large-scale tender organization, review, and analysis with an AI-powered secure vault.
                    </p>
                  </div>
                  <DropZone onUploadSuccess={handleUploadSuccess} />
                </div>
             </div>
           ) : (
-            <div className="flex h-full animate-in fade-in duration-500">
-              {/* Left Viewer Partition: PDF Style Rendering */}
-              <div className="flex-1 bg-black/40 border-r border-white/5 p-4 flex flex-col">
-                <div className="flex items-center justify-between mb-4 px-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-blue-400" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Source Content</span>
+            <div className="flex h-full animate-in fade-in duration-700">
+              {/* Left Viewer Partition: Stark Content Rendering */}
+              <div className="flex-1 bg-jabari-bg flex flex-col">
+                <div className="flex items-center justify-between border-b border-jabari-border px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <Library className="w-4 h-4 text-jabari-dim" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-jabari-gray">INTERNAL KNOWLEDGE_BASE CONTENT</span>
                   </div>
                   <a 
                     href={`http://localhost:8000/files/${activeDoc.file_name}`} 
                     target="_blank" 
-                    className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white/60 transition-colors"
+                    className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-jabari-dim hover:text-jabari-cream transition-colors"
                   >
-                    Open Original <ExternalLink className="w-3 h-3" />
+                    RAW SOURCE <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
-                <div className="flex-1 rounded-xl overflow-hidden glass border border-white/10 relative shadow-2xl">
-                   {activeDoc.category === 'pdf' ? (
-                     <iframe 
-                        id="pdf-viewer"
-                        src={`http://localhost:8000/files/${activeDoc.file_name}#toolbar=0&navpanes=0`} 
-                        className="w-full h-full border-none invert brightness-90 contrast-125 rounded-xl grayscale-[0.3]"
-                        title="Document Viewer"
-                     />
-                   ) : (
-                     <div className="p-12 overflow-y-auto max-h-full font-serif leading-relaxed text-blue-50/70 whitespace-pre-wrap selection:bg-blue-500/30">
-                        {activeDoc.full_content}
-                     </div>
-                   )}
+                <div className="flex-1 p-6">
+                   <div className="w-full h-full rounded-sm overflow-hidden border border-jabari-border relative bg-jabari-surface">
+                      {activeDoc.category === 'pdf' ? (
+                        <iframe 
+                           id="pdf-viewer"
+                           src={`http://localhost:8000/files/${activeDoc.file_name}#toolbar=0&navpanes=0`} 
+                           className="w-full h-full border-none invert brightness-[0.7] contrast-[1.2] grayscale"
+                           title="Ingestion Content"
+                        />
+                      ) : (
+                        <div className="p-16 overflow-y-auto max-h-full font-serif leading-relaxed text-jabari-nearWhite/90 whitespace-pre-wrap selection:bg-jabari-cream selection:text-jabari-ink">
+                           {activeDoc.full_content}
+                        </div>
+                      )}
+                   </div>
                 </div>
               </div>
 
-              {/* Right Analysis Partition: NotebookLM "Study Guide" */}
-              <div className="w-[450px] bg-[#080808]">
+              {/* Right Analysis Partition: Monochromatic Study Guide */}
+              <div className="w-[480px] border-l border-jabari-border bg-jabari-surface">
                 <AnalysisSidebar data={activeDoc} onJumpToPage={jumpToPage} />
               </div>
             </div>

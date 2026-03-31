@@ -5,38 +5,36 @@ import {
 } from 'lucide-react';
 
 const InsightCard = ({ icon: Icon, title, value, status, source, onClick }) => {
-  // Logic to determine status badge color from the tailwind config
-  const riskColorClass = status === 'Verified' ? 'bg-jabari-risk-none/20 text-jabari-risk-none border-jabari-risk-none/30' : 'bg-jabari-risk-medium/20 text-jabari-risk-medium border-jabari-risk-medium/30';
-
   return (
     <div 
       onClick={onClick}
       className="
-        p-5 mb-4 rounded-2xl border border-white/5 bg-jabari-card/40 
-        hover:bg-jabari-card/70 hover:border-blue-500/30
-        transition-all duration-200 group cursor-pointer
+        p-6 mb-4 rounded-sm border border-jabari-border bg-jabari-surface2/40 
+        hover:bg-jabari-surface2 hover:border-jabari-gray/30
+        transition-all duration-300 group cursor-pointer
       "
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-3 opacity-40">
         <div className="flex items-center gap-2">
-          <Icon className="w-4 h-4 text-white/40" />
-          <span className="text-[10px] uppercase font-bold tracking-widest text-[#a1a1a1]">{title}</span>
+          <Icon className="w-3.5 h-3.5" />
+          <span className="text-[9px] uppercase font-bold tracking-widest leading-none">{title}</span>
         </div>
         {source && (
-          <span className="px-2 py-0.5 rounded-full bg-white/5 text-white/30 text-[9px] font-black uppercase tracking-tighter border border-white/10">
-            Source: Page {source}
+          <span className="text-[9px] font-black uppercase tracking-tighter">
+            REF SOURCE: PARAGRAPH {source}
           </span>
         )}
       </div>
-      <p className="text-sm font-semibold tracking-wide text-white/90">
+      <p className="text-sm font-semibold tracking-wide text-jabari-nearWhite/90 font-serif leading-relaxed">
         {value || (
-          <span className="text-white/10 italic font-normal">Extracting...</span>
+          <span className="text-jabari-dim italic font-normal">Extracting Information...</span>
         )}
       </p>
       {status && (
-        <div className="mt-3">
-          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${riskColorClass}`}>
-            {status}
+        <div className="mt-4 flex items-center gap-2">
+          <div className={`w-1.5 h-1.5 rounded-full ${status === 'Verified' ? 'bg-jabari-cream' : 'bg-jabari-dim'}`} />
+          <span className="text-[9px] font-black uppercase tracking-widest text-jabari-gray leading-none">
+            {status} CONFIDENCE
           </span>
         </div>
       )}
@@ -48,80 +46,92 @@ const AnalysisSidebar = ({ data, onJumpToPage }) => {
   const analysis = data?.analysis || {};
   
   return (
-    <div className="h-full flex flex-col p-8 overflow-y-auto custom-scrollbar bg-jabari-bg/10">
+    <div className="h-full flex flex-col p-10 overflow-y-auto custom-scrollbar bg-jabari-surface selection:bg-jabari-cream selection:text-jabari-ink">
       {/* 2-Sentence Brief (Executive Summary) */}
-      <section className="mb-12">
-        <div className="flex items-center gap-2 mb-6 opacity-30">
+      <section className="mb-14">
+        <div className="flex items-center gap-2 mb-8 opacity-20">
           <Quote className="w-4 h-4" />
-          <h3 className="text-[10px] font-black uppercase tracking-widest leading-none">AI Insight Brief</h3>
+          <h3 className="text-[10px] font-black uppercase tracking-widest leading-none">ANALYSIS BRIEF_SUMMARY</h3>
         </div>
-        <p className="text-xl leading-relaxed text-jabari-cream/90 font-serif font-light mb-4 italic">
-          "{analysis.brief || "Awaiting AI synthesis of the vaulted document."}"
-        </p>
+        <div className="border-l border-jabari-border pl-6">
+           <p className="text-xl leading-[1.6] text-jabari-nearWhite font-serif font-light mb-4 italic italic">
+             "{analysis.brief || "Awaiting AI synthesis of the vaulted knowledge base content."}"
+           </p>
+        </div>
       </section>
 
       {/* Primary Auto-Tags (Metadata) */}
-      <section className="mb-12">
-        <div className="flex items-center gap-2 mb-8 opacity-30">
-          <LayoutGrid className="w-4 h-4 text-white" />
-          <h3 className="text-[10px] font-black uppercase tracking-widest leading-none">The Vaulted Data</h3>
+      <section className="mb-14">
+        <div className="flex items-center gap-2 mb-8 opacity-20">
+          <LayoutGrid className="w-4 h-4" />
+          <h3 className="text-[10px] font-black uppercase tracking-widest leading-none">THE VAULTED PARAMETERS</h3>
         </div>
         
         <div className="space-y-4">
           <InsightCard 
             icon={Hash} 
-            title="Official Tender ID" 
+            title="Official Identification ID" 
             value={analysis.tender_id?.value} 
             status={analysis.status}
-            source="-"
+            source="01"
             onClick={() => onJumpToPage(1)} 
           />
           <InsightCard 
             icon={Calendar} 
-            title="Closing Deadline" 
+            title="Deadline Critical_Date" 
             value={analysis.due_date?.value} 
             status={analysis.status}
-            source="-"
+            source="03"
             onClick={() => onJumpToPage(3)}
           />
           <InsightCard 
             icon={Bookmark} 
-            title="Required NCA Category" 
+            title="Document Classification" 
             value={analysis.nca_category?.value} 
             status={analysis.status}
-            source="-"
+            source="05"
             onClick={() => onJumpToPage(5)}
           />
         </div>
       </section>
 
-      {/* Risk Flags (NotebookLM critique vibe) */}
-      <section className="mb-8">
-        <div className="flex items-center gap-2 mb-8 opacity-30">
-          <ShieldAlert className="w-4 h-4 text-white" />
-          <h3 className="text-[10px] font-black uppercase tracking-widest leading-none">Risk Detection</h3>
+      {/* Risk Flags (Monochromatic Indicator) */}
+      <section className="mb-14">
+        <div className="flex items-center gap-2 mb-8 opacity-20">
+          <ShieldAlert className="w-4 h-4" />
+          <h3 className="text-[10px] font-black uppercase tracking-widest leading-none">RISK ASSESSMENT MATRIX</h3>
         </div>
         
         {analysis.risk_analysis && analysis.risk_analysis.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {analysis.risk_analysis.map((risk, i) => (
-              <div key={i} className="px-5 py-4 rounded-2xl bg-jabari-risk-medium/5 border border-jabari-risk-medium/20 flex items-center justify-between">
-                <p className="text-[11px] text-jabari-risk-medium font-black uppercase tracking-widest">{risk}</p>
-                <div className="px-3 py-1 rounded-full bg-jabari-risk-medium/10 text-[9px] font-black text-jabari-risk-medium">MEDIUM</div>
+              <div 
+                key={i} 
+                className="px-6 py-5 border border-jabari-border bg-jabari-surface rounded-none flex items-center justify-between group hover:border-jabari-gray transition-colors"
+                onClick={() => onJumpToPage(i*2 + 1)}
+              >
+                <p className="text-[11px] text-jabari-gray font-black uppercase tracking-[0.2em] group-hover:text-jabari-nearWhite">{risk}</p>
+                <div className="w-3 h-3 border border-jabari-dim rounded-full flex items-center justify-center">
+                   <div className="w-1 h-1 bg-jabari-cream rounded-full" />
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="px-5 py-5 rounded-2xl bg-jabari-risk-none/5 border border-jabari-risk-none/10">
-             <p className="text-[11px] text-jabari-risk-none font-black uppercase tracking-widest text-center">Low Risk - All Compliance Passed</p>
+          <div className="px-6 py-6 border border-jabari-border border-dashed text-center">
+             <p className="text-[11px] text-jabari-dim font-black uppercase tracking-widest">NO CRITICAL RISKS DETECTED AT THIS PHASE</p>
           </div>
         )}
       </section>
 
-      {/* Footer Info */}
-      <div className="mt-auto pt-8 border-t border-white/5">
-        <p className="text-[10px] font-black uppercase tracking-widest text-white/5 opacity-40 text-center uppercase leading-tight">
-          Phase 1: Ingestion Pipeline<br/>Secure Knowledge Base
+      {/* Status Bar */}
+      <div className="mt-auto pt-10 border-t border-jabari-border flex flex-col items-center">
+        <div className="flex items-center gap-4 mb-4">
+           <div className="w-1.5 h-1.5 rounded-full bg-jabari-cream animate-pulse" />
+           <span className="text-[9px] font-black uppercase tracking-widest text-jabari-dim">PHASE 1: SECURE KNOWLEDGE BASE ENGINE ACTIVE</span>
+        </div>
+        <p className="text-[8px] font-black uppercase tracking-widest text-jabari-dim opacity-30">
+          JABARI INTELLIGENCE // GEN-01_SECURE_VAULT
         </p>
       </div>
     </div>
