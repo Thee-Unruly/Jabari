@@ -29,7 +29,9 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sources, setSources] = useState(initialSources);
+  const [tenders, setTenders] = useState([]);
   const [groundedDocId, setGroundedDocId] = useState(documentId);
+  const [groundedTenderId, setGroundedTenderId] = useState(tenderId);
   const [showDocSelector, setShowDocSelector] = useState(false);
   const scrollRef = useRef(null);
 
@@ -39,7 +41,20 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
         .then(res => setSources(res.data.map(d => ({ ...d, name: d.file_name }))))
         .catch(err => console.error('Source Fetch Error', err));
     }
+    if (tenders.length === 0) {
+      axios.get('http://127.0.0.1:8500/tenders')
+        .then(res => setTenders(res.data))
+        .catch(err => console.error('Tenders Fetch Error', err));
+    }
   }, []);
+
+  useEffect(() => {
+    setGroundedDocId(documentId);
+  }, [documentId]);
+
+  useEffect(() => {
+    setGroundedTenderId(tenderId);
+  }, [tenderId]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -53,7 +68,10 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
   }, []);
 
   const activeDocName = sources.find(d => d.id === groundedDocId)?.name;
+  const activeLocalTenderName = tenders.find(t => t.id === groundedTenderId)?.name;
+  const displayTenderName = activeLocalTenderName || tenderName;
   const filteredSources = sources.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredTenders = tenders.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -65,7 +83,7 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
       const response = await axios.post('http://127.0.0.1:8500/chat', {
         message: input,
         document_id: groundedDocId,
-        tender_id: tenderId,
+        tender_id: groundedTenderId,
       });
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -185,10 +203,10 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
 
               {/* Universal vault */}
               <button
-                style={pickerBtn(!groundedDocId)}
-                onClick={() => { setGroundedDocId(null); setShowDocSelector(false); }}
-                onMouseOver={e => { if (groundedDocId) e.currentTarget.style.background = T.surface2; }}
-                onMouseOut={e => { if (groundedDocId) e.currentTarget.style.background = 'transparent'; }}
+                style={pickerBtn(!groundedDocId && !groundedTenderId)}
+                onClick={() => { setGroundedDocId(null); setGroundedTenderId(null); setShowDocSelector(false); }}
+                onMouseOver={e => { if (groundedDocId || groundedTenderId) e.currentTarget.style.background = T.surface2; }}
+                onMouseOut={e => { if (groundedDocId || groundedTenderId) e.currentTarget.style.background = 'transparent'; }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <Database style={{ width: '15px', height: '15px' }} />
@@ -196,8 +214,34 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
                     Universal Vault Analysis
                   </span>
                 </div>
-                {!groundedDocId && <Check style={{ width: '14px', height: '14px' }} />}
+                {!groundedDocId && !groundedTenderId && <Check style={{ width: '14px', height: '14px' }} />}
               </button>
+
+              {/* Projects label */}
+              {tenders.length > 0 && (
+                <>
+                  <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint, padding: '12px 4px 8px', margin: 0 }}>
+                    Project Workspaces
+                  </p>
+                  {filteredTenders.map(t => (
+                    <button
+                      key={`tender-${t.id}`}
+                      style={pickerBtn(!groundedDocId && groundedTenderId === t.id)}
+                      onClick={() => { setGroundedTenderId(t.id); setGroundedDocId(null); setShowDocSelector(false); }}
+                      onMouseOver={e => { if (groundedDocId || groundedTenderId !== t.id) e.currentTarget.style.background = T.surface2; }}
+                      onMouseOut={e => { if (groundedDocId || groundedTenderId !== t.id) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                        <Database style={{ width: '15px', height: '15px', flexShrink: 0, color: T.muted }} />
+                        <span style={{ fontSize: '13px', fontWeight: 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {t.name}
+                        </span>
+                      </div>
+                      {!groundedDocId && groundedTenderId === t.id && <Check style={{ width: '14px', height: '14px', flexShrink: 0 }} />}
+                    </button>
+                  ))}
+                </>
+              )}
 
               {/* Sources label */}
               <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint, padding: '12px 4px 8px', margin: 0 }}>
@@ -348,7 +392,7 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
         background: T.cream,
       }}>
         {/* Grounding pill */}
-        {(activeDocName || tenderName) && (
+        {(activeDocName || displayTenderName) && (
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -366,16 +410,14 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
           }}>
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: T.cream, flexShrink: 0 }} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {activeDocName || tenderName}
+              {activeDocName || displayTenderName}
             </span>
-            {activeDocName && (
-              <button
-                onClick={() => setGroundedDocId(null)}
-                style={{ background: 'none', border: 'none', color: T.cream, cursor: 'pointer', display: 'flex', padding: '0', flexShrink: 0, opacity: 0.7 }}
-              >
-                <X style={{ width: '12px', height: '12px' }} />
-              </button>
-            )}
+            <button
+              onClick={() => { setGroundedDocId(null); setGroundedTenderId(null); }}
+              style={{ background: 'none', border: 'none', color: T.cream, cursor: 'pointer', display: 'flex', padding: '0', flexShrink: 0, opacity: 0.7 }}
+            >
+              <X style={{ width: '12px', height: '12px' }} />
+            </button>
           </div>
         )}
 
@@ -413,7 +455,7 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={groundedDocId ? 'Ask about this document…' : tenderId ? 'Ask about this project…' : 'Ask anything across your vault…'}
+            placeholder={groundedDocId ? 'Ask about this document…' : displayTenderName ? `Ask about ${displayTenderName}…` : 'Ask anything across your vault…'}
             style={{
               flex: 1,
               padding: '13px 16px',
