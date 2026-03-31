@@ -3,17 +3,18 @@ import {
   Library, Plus, FileText, ChevronLeft, 
   Settings, User, Info, PanelLeftClose, 
   PanelLeftOpen, ExternalLink, Search,
-  MessageCircle, BarChart3, Database, Command
+  MessageCircle, BarChart3, Database, Command, PenTool
 } from 'lucide-react';
 import axios from 'axios';
 import DropZone from './components/DropZone';
 import AnalysisSidebar from './components/AnalysisSidebar';
 import ChatInterface from './components/ChatInterface';
+import DraftsView from './components/DraftsView';
 
 const App = () => {
   const [sources, setSources] = useState([]);
   const [activeDoc, setActiveDoc] = useState(null);
-  const [view, setView] = useState('vault'); // 'vault' or 'assistant'
+  const [view, setView] = useState('vault'); // 'vault', 'assistant', or 'drafts'
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('analysis'); // inner tab for vault view
 
