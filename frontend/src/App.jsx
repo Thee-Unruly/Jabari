@@ -74,6 +74,13 @@ const App = () => {
             >
                <MessageCircle className="w-6 h-6" />
             </button>
+            <button 
+               onClick={() => setView('drafts')}
+               className={`p-3 rounded-sm transition-all ${view === 'drafts' ? 'bg-jabari-bg text-jabari-cream border border-jabari-border/30 shadow-lg shadow-black' : 'text-jabari-dim hover:text-jabari-gray'}`}
+               title="Drafting Engine"
+            >
+               <PenTool className="w-6 h-6" />
+            </button>
             <button className="p-3 text-jabari-dim hover:text-jabari-gray" title="Settings">
                <Settings className="w-6 h-6" />
             </button>
@@ -89,7 +96,7 @@ const App = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         
         {/* --- VIEW: VAULT (DOCUMENT MANAGEMENT) --- */}
-        {view === 'vault' ? (
+        {view === 'vault' && (
           <div className="flex h-full animate-in fade-in slide-in-from-left-4 duration-500">
              {/* Vault Repository Sidebar */}
              <aside className={`bg-jabari-surface/50 border-r border-jabari-border flex flex-col transition-all duration-300 ${sidebarOpen ? 'w-80' : 'w-0 opacity-0 overflow-hidden'}`}>
@@ -194,9 +201,10 @@ const App = () => {
                 </div>
              </main>
           </div>
-        ) : (
-          /* --- VIEW: ASSISTANT (DEDICATED CONVERSATION) --- */
-          <div className="flex-1 flex flex-col bg-jabari-bg animate-in slide-in-from-right-4 duration-500">
+        )}
+
+        {view === 'assistant' && (
+          <div className="flex-1 flex flex-col bg-jabari-bg animate-in slide-in-from-right-4 duration-500 h-full">
              <header className="h-20 border-b border-jabari-border flex items-center justify-between px-10">
                 <div className="flex items-center gap-3">
                    <Command className="w-5 h-5 text-jabari-cream" />
@@ -209,9 +217,24 @@ const App = () => {
              </header>
              <div className="flex-1 max-w-5xl mx-auto w-full p-8 overflow-hidden flex flex-col">
                 <div className="flex-1 rounded-sm border border-jabari-border/30 bg-jabari-surface/40 overflow-hidden shadow-2xl">
-                   <ChatInterface documentId={activeDoc?.id} />
+                   <ChatInterface documentId={activeDoc?.id} initialSources={sources} />
                 </div>
              </div>
+          </div>
+        )}
+
+        {view === 'drafts' && (
+          <div className="flex-1 flex flex-col bg-jabari-bg animate-in slide-in-from-bottom-4 duration-700 h-full">
+             <header className="h-20 border-b border-jabari-border flex items-center justify-between px-10">
+                <div className="flex items-center gap-3">
+                   <PenTool className="w-5 h-5 text-jabari-cream" />
+                   <div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-jabari-dim leading-none">DRAFTING COMMAND //</span>
+                      <h2 className="font-serif font-light text-xl tracking-wide text-jabari-cream italic leading-none mt-1">Bid Production Studio</h2>
+                   </div>
+                </div>
+             </header>
+             <DraftsView sources={sources} />
           </div>
         )}
       </div>
