@@ -20,7 +20,7 @@ const DropZone = ({ onUploadSuccess }) => {
 
     try {
       console.log("--- INITIATING VAULT UPLOAD ---", file.name);
-      const response = await axios.post('http://127.0.0.1:8000/ingest', formData, {
+      const response = await axios.post('http://127.0.0.1:8500/ingest', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 60000, // 60s timeout for deep neural analysis
         onUploadProgress: (progressEvent) => {
