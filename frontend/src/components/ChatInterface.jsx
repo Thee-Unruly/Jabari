@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Send, Bot, User, Loader2, Bookmark,
   Paperclip, Check, Database, X, Search,
@@ -340,7 +342,33 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
                 paddingLeft: '20px',
               }),
             }}>
-              {msg.content}
+              {msg.role === 'user' ? (
+                msg.content
+              ) : (
+                <div style={{
+                  fontFamily: T.sans,
+                  fontSize: '14px',
+                  color: T.ink2,
+                  lineHeight: '1.75',
+                  overflowX: 'auto'
+                }}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      table: ({ node, ...props }) => <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem', marginBottom: '1rem', fontSize: '13px' }} {...props} />,
+                      th: ({ node, ...props }) => <th style={{ borderBottom: `2px solid ${T.border}`, padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: T.ink }} {...props} />,
+                      td: ({ node, ...props }) => <td style={{ borderBottom: `1px solid ${T.border2}`, padding: '10px 12px', verticalAlign: 'top', color: T.ink2 }} {...props} />,
+                      strong: ({ node, ...props }) => <strong style={{ fontWeight: 600, color: T.ink }} {...props} />,
+                      ul: ({ node, ...props }) => <ul style={{ paddingLeft: '20px', margin: '0 0 1rem 0' }} {...props} />,
+                      li: ({ node, ...props }) => <li style={{ marginBottom: '6px' }} {...props} />,
+                      p: ({ node, ...props }) => <p style={{ margin: '0 0 1rem 0' }} {...props} />,
+                      code: ({ node, ...props }) => <code style={{ background: T.surface2, padding: '2px 4px', borderRadius: '4px', fontSize: '12px', color: T.ink }} {...props} />
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
+              )}
 
               {/* Citations */}
               {msg.citations?.length > 0 && (
