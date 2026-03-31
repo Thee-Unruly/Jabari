@@ -1,10 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Send, Bot, User, Loader2, Bookmark, Paperclip, Check, Database, X, Search, FileText, Command as CommandIcon } from 'lucide-react';
+import {
+  Send, Bot, User, Loader2, Bookmark,
+  Paperclip, Check, Database, X, Search,
+  FileText, Command as CommandIcon
+} from 'lucide-react';
+
+/* ─── Jabari cream tokens ───────────────────────────────────── */
+const T = {
+  cream: '#F5F2ED',
+  ink: '#1a1a1a',
+  ink2: '#3d3d3a',
+  muted: '#6b6b68',
+  faint: '#9a9a96',
+  border: 'rgba(26,26,26,0.10)',
+  border2: 'rgba(26,26,26,0.06)',
+  surface: 'rgba(26,26,26,0.03)',
+  surface2: 'rgba(26,26,26,0.06)',
+  serif: "'Lora', Georgia, serif",
+  sans: "'DM Sans', system-ui, sans-serif",
+};
 
 const ChatInterface = ({ documentId, initialSources = [] }) => {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Neural Vault synchronized. Engage the Command Palette (Clip Icon) to ground your analysis.' }
+    { role: 'assistant', content: 'Vault synchronised. Use the clip icon to ground your analysis to a specific document.' }
   ]);
   const [input, setInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,18 +37,23 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
     if (sources.length === 0) {
       axios.get('http://127.0.0.1:8500/sources')
         .then(res => setSources(res.data.map(d => ({ ...d, name: d.file_name }))))
-        .catch(err => console.error("Source Fetch Error", err));
+        .catch(err => console.error('Source Fetch Error', err));
     }
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages]);
+
+  // Close modal on Escape
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setShowDocSelector(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   const activeDocName = sources.find(d => d.id === groundedDocId)?.name;
   const filteredSources = sources.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -40,167 +64,390 @@ const ChatInterface = ({ documentId, initialSources = [] }) => {
     try {
       const response = await axios.post('http://127.0.0.1:8500/chat', {
         message: input,
-        document_id: groundedDocId
+        document_id: groundedDocId,
       });
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: response.data.answer,
-        citations: response.data.citations
+        citations: response.data.citations,
       }]);
-    } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: "Neural sync error. Verify Port 8500." }]);
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sync error — verify connection on port 8500.' }]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  /* ── shared doc-picker button ── */
+  const pickerBtn = (active) => ({
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '14px 16px',
+    borderRadius: '6px',
+    border: `0.5px solid ${active ? T.ink : T.border}`,
+    background: active ? T.ink : 'transparent',
+    color: active ? T.cream : T.ink,
+    cursor: 'pointer',
+    textAlign: 'left',
+    marginBottom: '6px',
+    transition: 'all 0.15s',
+    fontFamily: T.sans,
+  });
+
   return (
-    <div className="flex flex-col h-full bg-jabari-bg relative overflow-hidden">
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      background: T.cream,
+      position: 'relative',
+      overflow: 'hidden',
+      fontFamily: T.sans,
+    }}>
 
-      {/* 🏛️ NEURAL COMMAND PALETTE (MODAL OVERLAY) */}
+      {/* ── DOC SELECTOR MODAL ── */}
       {showDocSelector && (
-        <div className="absolute inset-0 z-[100] flex items-center justify-center p-8 lg:p-20 animate-in fade-in duration-300">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDocSelector(false)} />
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
+        }}>
+          {/* Backdrop */}
+          <div
+            onClick={() => setShowDocSelector(false)}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(245,242,237,0.75)',
+              backdropFilter: 'blur(6px)',
+            }}
+          />
 
-          <div className="w-full max-w-2xl bg-jabari-surface2 border border-jabari-cream/20 shadow-[0_0_100px_rgba(0,0,0,1)] flex flex-col rounded-sm animate-in zoom-in-95 duration-300 overflow-hidden relative z-50">
-            <div className="p-8 border-b border-jabari-border flex items-center gap-6">
-              <Search className="w-6 h-6 text-jabari-cream" />
+          {/* Modal card */}
+          <div style={{
+            position: 'relative',
+            zIndex: 50,
+            width: '100%',
+            maxWidth: '560px',
+            background: T.cream,
+            border: `0.5px solid ${T.border}`,
+            borderRadius: '10px',
+            boxShadow: '0 8px 40px rgba(26,26,26,0.14)',
+            overflow: 'hidden',
+          }}>
+            {/* Search bar */}
+            <div style={{
+              padding: '1rem 1.25rem',
+              borderBottom: `0.5px solid ${T.border}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}>
+              <Search style={{ width: '16px', height: '16px', color: T.muted, flexShrink: 0 }} />
               <input
                 autoFocus
                 type="text"
-                placeholder="Query Vaulted Intelligence..."
-                className="bg-transparent border-none text-2xl font-serif text-jabari-nearWhite focus:outline-none w-full italic placeholder:text-jabari-dim/40"
+                placeholder="Search vaulted documents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  background: 'transparent',
+                  fontFamily: T.serif,
+                  fontStyle: 'italic',
+                  fontSize: '16px',
+                  color: T.ink,
+                  outline: 'none',
+                }}
               />
-              <X className="w-6 h-6 text-jabari-dim cursor-pointer hover:text-jabari-cream transition-all" onClick={() => setShowDocSelector(false)} />
+              <button
+                onClick={() => setShowDocSelector(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted, display: 'flex' }}
+              >
+                <X style={{ width: '16px', height: '16px' }} />
+              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto max-h-[450px] p-4 custom-scrollbar">
-              <div className="px-6 py-4 text-[10px] font-black tracking-[0.3em] text-jabari-cream uppercase opacity-60">Neural Scopes</div>
+            {/* List */}
+            <div style={{ overflowY: 'auto', maxHeight: '380px', padding: '1rem' }}>
+              {/* Scope label */}
+              <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint, padding: '0 4px 8px', margin: 0 }}>
+                Neural Scopes
+              </p>
+
+              {/* Universal vault */}
               <button
+                style={pickerBtn(!groundedDocId)}
                 onClick={() => { setGroundedDocId(null); setShowDocSelector(false); }}
-                className={`w-full flex items-center justify-between p-6 rounded-sm text-left transition-all mb-2 ${!groundedDocId ? 'bg-jabari-cream text-jabari-ink shadow-[0_0_30px_rgba(255,255,240,0.1)]' : 'hover:bg-jabari-surface/50 border border-jabari-border/30 text-jabari-nearWhite'}`}
+                onMouseOver={e => { if (groundedDocId) e.currentTarget.style.background = T.surface2; }}
+                onMouseOut={e => { if (groundedDocId) e.currentTarget.style.background = 'transparent'; }}
               >
-                <div className="flex items-center gap-5">
-                  <Database className="w-5 h-5" />
-                  <span className="text-[12px] font-black tracking-[0.1em] uppercase">UNIVERSAL_VAULT_ANALYSIS</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Database style={{ width: '15px', height: '15px' }} />
+                  <span style={{ fontSize: '12px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    Universal Vault Analysis
+                  </span>
                 </div>
-                {!groundedDocId && <Check className="w-5 h-5" />}
+                {!groundedDocId && <Check style={{ width: '14px', height: '14px' }} />}
               </button>
 
-              <div className="px-6 py-4 text-[10px] font-black tracking-[0.3em] text-jabari-cream uppercase opacity-60 mt-6">Vaulted Sources</div>
+              {/* Sources label */}
+              <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint, padding: '12px 4px 8px', margin: 0 }}>
+                Vaulted Sources
+              </p>
+
               {filteredSources.map(doc => (
                 <button
                   key={doc.id}
+                  style={pickerBtn(groundedDocId === doc.id)}
                   onClick={() => { setGroundedDocId(doc.id); setShowDocSelector(false); }}
-                  className={`w-full flex items-center justify-between p-6 rounded-sm text-left transition-all mb-2 ${groundedDocId === doc.id ? 'bg-jabari-cream text-jabari-ink shadow-[0_0_30px_rgba(255,255,240,0.1)]' : 'hover:bg-jabari-surface/50 border border-jabari-border/30 text-jabari-nearWhite'}`}
+                  onMouseOver={e => { if (groundedDocId !== doc.id) e.currentTarget.style.background = T.surface2; }}
+                  onMouseOut={e => { if (groundedDocId !== doc.id) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <div className="flex items-center gap-5 overflow-hidden">
-                    <FileText className="w-5 h-5 flex-shrink-0" />
-                    <span className="text-sm font-light truncate">{doc.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                    <FileText style={{ width: '15px', height: '15px', flexShrink: 0 }} />
+                    <span style={{ fontSize: '13px', fontWeight: 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {doc.name}
+                    </span>
                   </div>
-                  {groundedDocId === doc.id && <Check className="w-5 h-5 flex-shrink-0" />}
+                  {groundedDocId === doc.id && <Check style={{ width: '14px', height: '14px', flexShrink: 0 }} />}
                 </button>
               ))}
             </div>
-            <div className="p-4 bg-jabari-bg/50 border-t border-jabari-border flex items-center justify-between text-[8px] font-black tracking-[0.2em] text-jabari-dim uppercase">
-              <span>ESC to Close</span>
-              <span className="flex items-center gap-2"><CommandIcon className="w-2.5 h-2.5" /> + Selection</span>
+
+            {/* Footer */}
+            <div style={{
+              padding: '10px 16px',
+              borderTop: `0.5px solid ${T.border}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', color: T.faint }}>Esc to close</span>
+              <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', color: T.faint, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <CommandIcon style={{ width: '10px', height: '10px' }} /> + Selection
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* 💬 CHAT FEED */}
-      <div className="flex-1 overflow-y-auto p-12 space-y-12 custom-scrollbar" ref={scrollRef}>
+      {/* ── CHAT FEED ── */}
+      <div
+        ref={scrollRef}
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '2rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+        }}
+      >
         {messages.map((msg, idx) => (
-          <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start animate-in fade-in duration-700'}`}>
-            <div className={`flex items-center gap-2 mb-3 opacity-30 uppercase text-[9px] font-black tracking-[0.2em]`}>
-              {msg.role === 'assistant' ? <Bot className="w-3 h-3" /> : <User className="w-3 h-3" />}
-              <span>{msg.role}</span>
+          <div key={idx} style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
+          }}>
+            {/* Role label */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              marginBottom: '6px',
+              opacity: 0.45,
+              fontSize: '9px',
+              fontWeight: 500,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: T.muted,
+            }}>
+              {msg.role === 'assistant'
+                ? <Bot style={{ width: '11px', height: '11px' }} />
+                : <User style={{ width: '11px', height: '11px' }} />}
+              <span>{msg.role === 'assistant' ? 'Jabari' : 'You'}</span>
             </div>
-            <div className={`
-              max-w-[85%] p-7 rounded-sm font-light leading-loose text-[15px]
-              ${msg.role === 'user' ? 'bg-jabari-surface2 text-jabari-nearWhite border border-jabari-border shadow-xl' : 'text-jabari-gray border-l-2 border-jabari-cream/40 bg-jabari-surface/10'}
-            `}>
+
+            {/* Bubble */}
+            <div style={{
+              maxWidth: '82%',
+              padding: '14px 18px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              lineHeight: 1.75,
+              fontWeight: 400,
+              ...(msg.role === 'user' ? {
+                background: T.surface2,
+                border: `0.5px solid ${T.border}`,
+                color: T.ink,
+              } : {
+                background: 'transparent',
+                borderLeft: `2px solid ${T.border}`,
+                color: T.ink2,
+                paddingLeft: '20px',
+              }),
+            }}>
               {msg.content}
 
-              {msg.citations && msg.citations.length > 0 && (
-                <div className="mt-10 pt-8 border-t border-jabari-border/20 space-y-4">
-                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-jabari-dim flex items-center gap-2">
-                    <Bookmark className="w-2.5 h-2.5" /> GROUNDED EVIDENCE
+              {/* Citations */}
+              {msg.citations?.length > 0 && (
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: `0.5px solid ${T.border}` }}>
+                  <div style={{
+                    fontSize: '9px', fontWeight: 500, letterSpacing: '0.08em',
+                    textTransform: 'uppercase', color: T.faint,
+                    display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '8px',
+                  }}>
+                    <Bookmark style={{ width: '10px', height: '10px' }} /> Grounded Evidence
                   </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    {msg.citations.map((cite, cidx) => (
-                      <div key={cidx} className="p-4 bg-jabari-bg/50 border border-jabari-border/10 rounded-sm hover:border-jabari-cream/30 transition-all cursor-default">
-                        <div className="text-[10px] font-bold text-jabari-cream mb-2 uppercase tracking-[0.1em] truncate">{cite.filename}</div>
-                        <div className="text-[12px] text-jabari-gray/70 italic leading-relaxed">
-                          "...{cite.snippet}"
-                        </div>
+                  {msg.citations.map((cite, cidx) => (
+                    <div key={cidx} style={{
+                      padding: '10px 12px',
+                      background: T.surface2,
+                      border: `0.5px solid ${T.border}`,
+                      borderRadius: '6px',
+                      marginBottom: '6px',
+                    }}>
+                      <div style={{ fontSize: '10px', fontWeight: 500, color: T.ink, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {cite.filename}
                       </div>
-                    ))}
-                  </div>
+                      <div style={{ fontSize: '12px', color: T.muted, fontStyle: 'italic', lineHeight: 1.6, fontFamily: T.serif }}>
+                        "…{cite.snippet}"
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           </div>
         ))}
+
+        {/* Loading indicator */}
         {isLoading && (
-          <div className="flex items-center gap-4 text-jabari-dim p-6">
-            <Loader2 className="w-5 h-5 animate-spin text-jabari-cream" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Neural Synthesis in Progress...</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: T.muted, padding: '4px 0' }}>
+            <Loader2 style={{ width: '16px', height: '16px', animation: 'jabari-spin 1s linear infinite', color: T.ink }} />
+            <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Synthesising…
+            </span>
           </div>
         )}
       </div>
 
-      {/* 🚀 INTEGRATED COMMAND BAR */}
-      <div className="p-8 bg-jabari-bg border-t border-jabari-border">
-        <div className="max-w-4xl mx-auto flex flex-col gap-3">
-
-          {/* Grounding Indicator - Fixed overlap and added truncation */}
-          {activeDocName && (
-            <div className="flex items-center gap-3 px-5 py-2.5 bg-jabari-cream border border-jabari-cream rounded-sm shadow-[0_10px_40px_rgba(0,0,0,0.4)] self-start animate-in slide-in-from-bottom-4 max-w-full">
-              <div className="w-2 h-2 rounded-full bg-jabari-ink animate-pulse flex-shrink-0" />
-              <span className="text-[10px] font-black text-jabari-ink uppercase tracking-[0.2em] leading-none truncate max-w-[300px] md:max-w-[500px]">
-                NEURAL_GROUNDING: {activeDocName}
-              </span>
-              <button
-                onClick={() => setGroundedDocId(null)}
-                className="ml-2 p-1 hover:bg-jabari-ink/10 rounded-full transition-all text-jabari-ink flex-shrink-0"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          <div className="flex items-stretch bg-jabari-surface border border-jabari-border rounded-sm shadow-2xl focus-within:border-jabari-cream/40 transition-all overflow-hidden border-l-4 border-l-jabari-cream/20">
+      {/* ── COMMAND BAR ── */}
+      <div style={{
+        padding: '1rem 1.25rem',
+        borderTop: `0.5px solid ${T.border}`,
+        background: T.cream,
+      }}>
+        {/* Grounding pill */}
+        {activeDocName && (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '5px 12px',
+            borderRadius: '24px',
+            background: T.ink,
+            color: T.cream,
+            fontSize: '10px',
+            fontWeight: 500,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            marginBottom: '10px',
+            maxWidth: '100%',
+          }}>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: T.cream, flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {activeDocName}
+            </span>
             <button
-              onClick={() => setShowDocSelector(true)}
-              className={`p-6 border-r border-jabari-border hover:bg-jabari-surface2 transition-all group ${groundedDocId ? 'text-jabari-cream' : 'text-jabari-dim'}`}
-              title="Open Neural Palette"
+              onClick={() => setGroundedDocId(null)}
+              style={{ background: 'none', border: 'none', color: T.cream, cursor: 'pointer', display: 'flex', padding: '0', flexShrink: 0, opacity: 0.7 }}
             >
-              <Paperclip className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            </button>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder={groundedDocId ? "Instruction grounded in document context..." : "Universal vault query..."}
-              className="flex-1 bg-transparent p-6 text-base text-jabari-nearWhite placeholder:text-jabari-dim/50 focus:outline-none"
-            />
-            <button
-              onClick={handleSend}
-              disabled={isLoading || !input.trim()}
-              className="px-8 text-jabari-dim hover:text-jabari-cream disabled:opacity-20 transition-all flex items-center gap-3 bg-jabari-surface2 border-l border-jabari-border group"
-            >
-              <span className="text-[10px] font-black uppercase tracking-widest hidden lg:block">Process</span>
-              <Send className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              <X style={{ width: '12px', height: '12px' }} />
             </button>
           </div>
+        )}
+
+        {/* Input row */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'stretch',
+          border: `0.5px solid ${T.border}`,
+          borderRadius: '8px',
+          overflow: 'hidden',
+          background: T.surface,
+          transition: 'border-color 0.2s',
+        }}>
+          {/* Clip / doc picker */}
+          <button
+            onClick={() => setShowDocSelector(true)}
+            title="Select document scope"
+            style={{
+              padding: '0 14px',
+              border: 'none',
+              borderRight: `0.5px solid ${T.border}`,
+              background: 'transparent',
+              color: groundedDocId ? T.ink : T.muted,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <Paperclip style={{ width: '16px', height: '16px' }} />
+          </button>
+
+          {/* Text input */}
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder={groundedDocId ? 'Ask about this document…' : 'Ask anything across your vault…'}
+            style={{
+              flex: 1,
+              padding: '13px 16px',
+              border: 'none',
+              background: 'transparent',
+              fontSize: '14px',
+              color: T.ink,
+              outline: 'none',
+              fontFamily: T.sans,
+            }}
+          />
+
+          {/* Send */}
+          <button
+            onClick={handleSend}
+            disabled={isLoading || !input.trim()}
+            style={{
+              padding: '0 16px',
+              border: 'none',
+              borderLeft: `0.5px solid ${T.border}`,
+              background: 'transparent',
+              color: input.trim() ? T.ink : T.faint,
+              cursor: input.trim() ? 'pointer' : 'default',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'color 0.15s',
+              fontFamily: T.sans,
+            }}
+          >
+            <span style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Send</span>
+            <Send style={{ width: '14px', height: '14px' }} />
+          </button>
         </div>
       </div>
+
+      <style>{`@keyframes jabari-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

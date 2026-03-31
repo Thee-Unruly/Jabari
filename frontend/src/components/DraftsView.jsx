@@ -1,9 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import {
-  FileText, Wand2, Download, Printer, Copy, Loader2,
-  Database, AlertCircle, CheckCircle2, Check, ChevronUp
+  FileText, Wand2, Download, Copy, Loader2,
+  AlertCircle, CheckCircle2, Check, ChevronDown
 } from 'lucide-react';
+
+/* ─── Jabari cream tokens ───────────────────────────────────── */
+const T = {
+  cream: '#F5F2ED',
+  ink: '#1a1a1a',
+  ink2: '#3d3d3a',
+  muted: '#6b6b68',
+  faint: '#9a9a96',
+  border: 'rgba(26,26,26,0.10)',
+  border2: 'rgba(26,26,26,0.06)',
+  surface: 'rgba(26,26,26,0.03)',
+  surface2: 'rgba(26,26,26,0.06)',
+  serif: "'Lora', Georgia, serif",
+  sans: "'DM Sans', system-ui, sans-serif",
+};
+
+const DRAFT_TYPES = [
+  { id: 'technical_proposal', label: 'Technical Proposal' },
+  { id: 'cover_letter', label: 'Executive Cover Letter' },
+  { id: 'compliance_matrix', label: 'Compliance Matrix' },
+];
 
 const DraftsView = ({ sources = [] }) => {
   const [selectedDocId, setSelectedDocId] = useState(null);
@@ -12,19 +33,15 @@ const DraftsView = ({ sources = [] }) => {
   const [draft, setDraft] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-
-  // Custom Dropdown State & Refs
-  const [showSourceDropdown, setShowSourceDropdown] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
   const activeSourceName = sources.find(d => d.id === selectedDocId)?.name;
 
-  // Handle clicking outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowSourceDropdown(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
+        setShowDropdown(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -32,18 +49,16 @@ const DraftsView = ({ sources = [] }) => {
 
   const handleGenerate = async () => {
     if (!selectedDocId) return;
-
     setIsGenerating(true);
     setDraft(null);
-
     try {
       const response = await axios.post('http://127.0.0.1:8500/draft', {
         document_id: selectedDocId,
-        draft_type: draftType
+        draft_type: draftType,
       });
       setDraft(response.data);
     } catch (err) {
-      console.error("Drafting Error", err);
+      console.error('Drafting Error', err);
     } finally {
       setIsGenerating(false);
     }
@@ -60,11 +75,11 @@ const DraftsView = ({ sources = [] }) => {
     if (!draft?.content || !draft?.title) return;
     setIsExporting(true);
     try {
-      const response = await axios.post('http://127.0.0.1:8500/export/docx', {
-        title: draft.title,
-        content: draft.content
-      }, { responseType: 'blob' });
-      
+      const response = await axios.post(
+        'http://127.0.0.1:8500/export/docx',
+        { title: draft.title, content: draft.content },
+        { responseType: 'blob' }
+      );
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -72,161 +87,275 @@ const DraftsView = ({ sources = [] }) => {
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
-    } catch (error) {
-      console.error("Export error:", error);
+    } catch (err) {
+      console.error('Export error:', err);
     } finally {
       setIsExporting(false);
     }
   };
 
+  /* ── tiny style helpers ── */
+  const eyebrow = {
+    fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em',
+    textTransform: 'uppercase', color: T.faint, fontFamily: T.sans,
+    display: 'block', marginBottom: '8px',
+  };
+
+  const actionBtn = (disabled) => ({
+    display: 'flex', alignItems: 'center', gap: '6px',
+    padding: '7px 12px', border: `0.5px solid ${T.border}`,
+    borderRadius: '6px', background: 'transparent',
+    color: disabled ? T.faint : T.muted, fontSize: '10px', fontWeight: 500,
+    letterSpacing: '0.06em', textTransform: 'uppercase',
+    cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: T.sans,
+    opacity: disabled ? 0.4 : 1, transition: 'color 0.15s',
+  });
+
   return (
-    <div className="flex-1 flex overflow-hidden bg-jabari-bg">
-      {/* 🏛️ LEFT: CONFIGURATION PANEL */}
-      <aside className="w-96 border-r border-jabari-border flex flex-col p-8 gap-8 bg-jabari-surface/30 overflow-visible relative z-10">
+    <div style={{
+      display: 'flex', flex: 1, overflow: 'hidden',
+      background: T.cream, fontFamily: T.sans,
+    }}>
+
+      {/* ── LEFT: CONFIG PANEL ── */}
+      <aside style={{
+        width: '300px', flexShrink: 0,
+        borderRight: `0.5px solid ${T.border}`,
+        display: 'flex', flexDirection: 'column',
+        padding: '2rem', gap: '2rem',
+        background: T.cream, position: 'relative',
+        overflowY: 'auto',
+      }}>
+
+        {/* Heading */}
         <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-jabari-dim mb-4">PRODUCTION CONFIG</div>
-          <h2 className="text-xl font-serif font-light text-jabari-cream italic">Drafting Parameters</h2>
+          <span style={eyebrow}>Production Config</span>
+          <h2 style={{
+            fontFamily: T.serif, fontSize: '22px', fontWeight: 400,
+            fontStyle: 'italic', color: T.ink, margin: 0, letterSpacing: '-0.01em',
+          }}>
+            Drafting Parameters
+          </h2>
         </div>
 
-        <div className="space-y-6">
-          {/* THE FIX: Dynamic Z-Index on the container. 
-              When open, it jumps to z-50. When closed, it sits at z-20. 
-              This ensures the absolute child floats OVER the Artifact Type section.
-          */}
-          <div
-            className={`space-y-2 relative transition-all duration-300 ${showSourceDropdown ? 'z-50' : 'z-20'}`}
-            ref={dropdownRef}
+        {/* Source selector */}
+        <div style={{ position: 'relative', zIndex: showDropdown ? 50 : 10 }} ref={dropdownRef}>
+          <span style={eyebrow}>Source Material</span>
+
+          <button
+            onClick={() => setShowDropdown(p => !p)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', padding: '10px 14px',
+              border: `0.5px solid ${showDropdown ? T.ink : T.border}`,
+              borderRadius: '6px', background: T.surface,
+              color: selectedDocId ? T.ink : T.muted,
+              fontSize: '13px', cursor: 'pointer', fontFamily: T.sans,
+              textAlign: 'left', transition: 'border-color 0.15s',
+            }}
           >
-            <label className="text-[8px] font-black uppercase tracking-widest text-jabari-gray">SOURCE MATERIAL</label>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
+              {activeSourceName ?? 'Select Vaulted Source…'}
+            </span>
+            <ChevronDown style={{
+              width: '14px', height: '14px', color: T.muted, flexShrink: 0,
+              transform: showDropdown ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s',
+            }} />
+          </button>
 
-            <button
-              onClick={() => setShowSourceDropdown(prev => !prev)}
-              className={`w-full bg-jabari-surface border p-4 text-xs text-left focus:outline-none transition-all rounded-sm flex items-center justify-between group
-                ${showSourceDropdown ? 'border-jabari-cream ring-1 ring-jabari-cream/20 shadow-[0_0_20px_rgba(212,187,143,0.05)]' : 'border-jabari-border'}`}
-            >
-              <span className={selectedDocId ? 'text-jabari-nearWhite truncate max-w-[220px]' : 'text-jabari-dim'}>
-                {activeSourceName ?? 'Select Vaulted Source...'}
-              </span>
-              <ChevronUp className={`w-4 h-4 transition-transform duration-300 ${showSourceDropdown ? 'rotate-0 text-jabari-cream' : 'rotate-180 text-jabari-dim'}`} />
-            </button>
-
-            {showSourceDropdown && (
-              /* The "Floating" Layer: 
-                 - top-[calc(100%+4px)]: Anchors it with a slight air-gap.
-                 - shadow-black/90: Massive drop shadow for depth.
-                 - zoom-in-95: High-end expansion effect.
-              */
-              <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-[60] bg-jabari-surface2 border border-jabari-border rounded-sm shadow-[0_25px_50px_-12px_rgba(0,0,0,0.9)] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
-                <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                  {sources.length === 0 && (
-                    <div className="px-4 py-4 text-[10px] text-jabari-dim uppercase tracking-widest italic text-center">No vaulted sources available</div>
-                  )}
-                  {sources.map(doc => (
-                    <button
-                      key={doc.id}
-                      onClick={() => {
-                        setSelectedDocId(doc.id);
-                        setShowSourceDropdown(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-4 py-4 text-[11px] text-left transition-all hover:bg-jabari-surface border-b border-jabari-border/30 last:border-0
-                          ${selectedDocId === doc.id ? 'text-jabari-cream font-bold bg-jabari-cream/5' : 'text-jabari-gray font-light'}`}
-                    >
-                      <span className="truncate max-w-[240px]">{doc.name}</span>
-                      {selectedDocId === doc.id && <Check className="w-3 h-3 flex-shrink-0 text-jabari-cream" />}
-                    </button>
-                  ))}
-                </div>
+          {/* Dropdown list */}
+          {showDropdown && (
+            <div style={{
+              position: 'absolute', left: 0, right: 0,
+              top: 'calc(100% + 4px)', zIndex: 60,
+              background: T.cream, border: `0.5px solid ${T.border}`,
+              borderRadius: '6px',
+              boxShadow: '0 8px 32px rgba(26,26,26,0.12)',
+              overflow: 'hidden',
+            }}>
+              <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                {sources.length === 0 && (
+                  <div style={{ padding: '14px 16px', fontSize: '11px', color: T.faint, textAlign: 'center', fontStyle: 'italic' }}>
+                    No vaulted sources available
+                  </div>
+                )}
+                {sources.map((doc, i) => (
+                  <button
+                    key={doc.id}
+                    onClick={() => { setSelectedDocId(doc.id); setShowDropdown(false); }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center',
+                      justifyContent: 'space-between', padding: '11px 14px',
+                      border: 'none', borderBottom: i < sources.length - 1 ? `0.5px solid ${T.border2}` : 'none',
+                      background: selectedDocId === doc.id ? T.surface2 : 'transparent',
+                      color: selectedDocId === doc.id ? T.ink : T.ink2,
+                      fontSize: '13px', fontWeight: selectedDocId === doc.id ? 500 : 400,
+                      cursor: 'pointer', textAlign: 'left', fontFamily: T.sans,
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseOver={e => { if (selectedDocId !== doc.id) e.currentTarget.style.background = T.surface; }}
+                    onMouseOut={e => { if (selectedDocId !== doc.id) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
+                      {doc.name}
+                    </span>
+                    {selectedDocId === doc.id && <Check style={{ width: '13px', height: '13px', flexShrink: 0, color: T.ink }} />}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
-
-          {/* ARTIFACT TYPE SECTION — Now safely stays in the background */}
-          <div className="space-y-2 relative z-10">
-            <label className="text-[8px] font-black uppercase tracking-widest text-jabari-gray">ARTIFACT TYPE</label>
-            <div className="grid grid-cols-1 gap-2">
-              {[
-                { id: 'technical_proposal', label: 'Technical Proposal' },
-                { id: 'cover_letter', label: 'Executive Cover Letter' },
-                { id: 'compliance_matrix', label: 'Compliance Matrix' }
-              ].map(type => (
-                <button
-                  key={type.id}
-                  onClick={() => setDraftType(type.id)}
-                  className={`p-4 text-[10px] font-black uppercase tracking-widest text-left border rounded-sm transition-all ${draftType === type.id ? 'bg-jabari-cream text-jabari-ink border-jabari-cream' : 'bg-transparent border-jabari-border text-jabari-dim hover:border-jabari-gray'}`}
-                >
-                  {type.label}
-                </button>
-              ))}
             </div>
+          )}
+        </div>
+
+        {/* Artifact type */}
+        <div style={{ position: 'relative', zIndex: 10 }}>
+          <span style={eyebrow}>Artifact Type</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {DRAFT_TYPES.map(type => (
+              <button
+                key={type.id}
+                onClick={() => setDraftType(type.id)}
+                style={{
+                  padding: '11px 14px', textAlign: 'left',
+                  border: `0.5px solid ${draftType === type.id ? T.ink : T.border}`,
+                  borderRadius: '6px',
+                  background: draftType === type.id ? T.ink : 'transparent',
+                  color: draftType === type.id ? T.cream : T.muted,
+                  fontSize: '11px', fontWeight: 500, letterSpacing: '0.06em',
+                  textTransform: 'uppercase', cursor: 'pointer', fontFamily: T.sans,
+                  transition: 'all 0.15s',
+                }}
+              >
+                {type.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="mt-auto relative z-10">
+        {/* Generate button — pinned to bottom */}
+        <div style={{ marginTop: 'auto' }}>
           <button
             onClick={handleGenerate}
             disabled={!selectedDocId || isGenerating}
-            className="w-full py-5 bg-jabari-nearWhite text-jabari-ink font-black text-[11px] uppercase tracking-widest hover:bg-jabari-white transition-all flex items-center justify-center gap-3 disabled:opacity-20 shadow-2xl shadow-black"
+            style={{
+              width: '100%', padding: '13px',
+              borderRadius: '24px', border: 'none',
+              background: !selectedDocId || isGenerating ? T.surface2 : T.ink,
+              color: !selectedDocId || isGenerating ? T.faint : T.cream,
+              fontSize: '12px', fontWeight: 500, letterSpacing: '0.07em',
+              textTransform: 'uppercase', cursor: !selectedDocId || isGenerating ? 'not-allowed' : 'pointer',
+              fontFamily: T.sans, display: 'flex', alignItems: 'center',
+              justifyContent: 'center', gap: '8px', transition: 'all 0.15s',
+            }}
           >
-            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-            SYNTHESIZE DRAFT
+            {isGenerating
+              ? <><Loader2 style={{ width: '14px', height: '14px', animation: 'jabari-spin 1s linear infinite' }} /> Synthesising…</>
+              : <><Wand2 style={{ width: '14px', height: '14px' }} /> Synthesize Draft</>
+            }
           </button>
         </div>
       </aside>
 
-      {/* 🏛️ RIGHT: PRODUCTION PREVIEW */}
-      <main className="flex-1 overflow-y-auto p-12 bg-jabari-bg custom-scrollbar relative flex justify-center">
+      {/* ── RIGHT: PREVIEW ── */}
+      <main style={{
+        flex: 1, overflowY: 'auto', padding: '2rem',
+        background: T.cream, display: 'flex', justifyContent: 'center',
+      }}>
         {!draft && !isGenerating ? (
-          <div className="flex flex-col items-center justify-center text-center opacity-20 mt-20">
-            <FileText className="w-24 h-24 mb-6" />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em]">Canvas Ready for Synthesis</p>
+          /* Empty state */
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', opacity: 0.25, marginTop: '5rem', textAlign: 'center',
+          }}>
+            <FileText style={{ width: '64px', height: '64px', marginBottom: '1rem', color: T.ink }} />
+            <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.ink }}>
+              Canvas Ready for Synthesis
+            </p>
           </div>
         ) : (
-          <div className="w-full max-w-4xl animate-in zoom-in-95 duration-700">
-            <div className="mb-8 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-jabari-cream animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-jabari-cream">PRODUCTION PREVIEW</span>
+          <div style={{ width: '100%', maxWidth: '760px' }}>
+
+            {/* Toolbar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: T.ink, opacity: 0.4 }} />
+                <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.muted }}>
+                  Production Preview
+                </span>
               </div>
-              <div className="flex items-center gap-4">
-                <button onClick={copyToClipboard} className="p-2 text-jabari-dim hover:text-jabari-cream transition-all flex items-center gap-2">
-                  {copySuccess ? <CheckCircle2 className="w-4 h-4 text-jabari-cream" /> : <Copy className="w-4 h-4" />}
-                  <span className="text-[8px] font-black uppercase tracking-widest">{copySuccess ? 'Copied' : 'Copy Content'}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  onClick={copyToClipboard}
+                  style={actionBtn(false)}
+                  onMouseOver={e => e.currentTarget.style.color = T.ink}
+                  onMouseOut={e => e.currentTarget.style.color = T.muted}
+                >
+                  {copySuccess
+                    ? <><CheckCircle2 style={{ width: '13px', height: '13px' }} /> Copied</>
+                    : <><Copy style={{ width: '13px', height: '13px' }} /> Copy</>
+                  }
                 </button>
-                <button 
+                <button
                   onClick={handleExportDocx}
                   disabled={isExporting}
-                  className="p-2 text-jabari-dim hover:text-jabari-cream transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed group"
+                  style={actionBtn(isExporting)}
+                  onMouseOver={e => { if (!isExporting) e.currentTarget.style.color = T.ink; }}
+                  onMouseOut={e => { if (!isExporting) e.currentTarget.style.color = T.muted; }}
                 >
-                  {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-jabari-cream" /> : <Download className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />}
-                  <span className="text-[8px] font-black uppercase tracking-widest">{isExporting ? 'Synthesizing...' : 'Export Word'}</span>
+                  {isExporting
+                    ? <><Loader2 style={{ width: '13px', height: '13px', animation: 'jabari-spin 1s linear infinite' }} /> Exporting…</>
+                    : <><Download style={{ width: '13px', height: '13px' }} /> Export Word</>
+                  }
                 </button>
               </div>
             </div>
 
-            <div className="bg-jabari-surface/20 border border-jabari-border/30 p-16 min-h-[1000px] shadow-2xl relative shadow-black/40">
-              <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-jabari-cream to-transparent opacity-20" />
-
+            {/* Document canvas */}
+            <div style={{
+              background: '#fff',
+              border: `0.5px solid ${T.border}`,
+              borderRadius: '8px',
+              padding: '3.5rem 4rem',
+              minHeight: '800px',
+              boxShadow: '0 4px 24px rgba(26,26,26,0.07)',
+            }}>
               {isGenerating ? (
-                <div className="flex flex-col items-center justify-center h-96 gap-4">
-                  <Loader2 className="w-8 h-8 animate-spin text-jabari-cream" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-jabari-dim animate-pulse">Neural Drafting Engine Engaged...</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '12px' }}>
+                  <Loader2 style={{ width: '28px', height: '28px', color: T.ink, animation: 'jabari-spin 1s linear infinite' }} />
+                  <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.muted }}>
+                    Drafting Engine Engaged…
+                  </p>
                 </div>
               ) : (
-                <div className="font-serif leading-relaxed text-jabari-nearWhite/80 whitespace-pre-wrap selection:bg-jabari-cream selection:text-jabari-ink animate-in fade-in duration-1000">
+                <div style={{
+                  fontFamily: T.serif, fontSize: '15px', lineHeight: 1.85,
+                  color: T.ink2, whiteSpace: 'pre-wrap',
+                }}>
                   {draft?.content}
                 </div>
               )}
             </div>
 
-            <div className="mt-12 p-8 border border-jabari-border border-dashed rounded-sm flex items-center gap-4 opacity-50 mb-12">
-              <AlertCircle className="w-5 h-5 text-jabari-cream" />
-              <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">
-                AI-GENERATED DRAFT. Review for technical accuracy and firm-specific formatting before submission.
+            {/* Disclaimer */}
+            <div style={{
+              marginTop: '1.5rem', marginBottom: '3rem',
+              padding: '14px 18px',
+              border: `0.5px dashed ${T.border}`,
+              borderRadius: '6px',
+              display: 'flex', alignItems: 'center', gap: '10px',
+              opacity: 0.55,
+            }}>
+              <AlertCircle style={{ width: '14px', height: '14px', color: T.muted, flexShrink: 0 }} />
+              <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.muted, margin: 0, lineHeight: 1.6 }}>
+                AI-generated draft. Review for technical accuracy before submission.
               </p>
             </div>
           </div>
         )}
       </main>
+
+      <style>{`@keyframes jabari-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
