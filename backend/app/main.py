@@ -14,14 +14,16 @@ from app.services.analyzer import HybridAnalyzer
 from app.services.vector_store import VectorStoreService
 from app.services.assistant import JabariAssistant
 from app.services.drafter import JabariDrafter
+from app.services.exporter import ExportEngine
 from app.db import SessionLocal, init_db, Document, DocumentChunk
+from fastapi.responses import StreamingResponse
 
 # Initialize components
 init_db()
 assistant = JabariAssistant()
 drafter = JabariDrafter()
 
-app = FastAPI(title="Jabari AI - Phase 2 Intelligent Vault")
+app = FastAPI(title="Jabari AI - Phase 3 Deliverability")
 
 class ChatRequest(BaseModel):
     message: str
@@ -30,6 +32,10 @@ class ChatRequest(BaseModel):
 class DraftRequest(BaseModel):
     document_id: int
     draft_type: str = "technical_proposal"
+
+class ExportRequest(BaseModel):
+    title: str
+    content: str
 
 # Dependency for DB Session
 def get_db():
@@ -94,6 +100,23 @@ async def generate_draft(request: DraftRequest, db: Session = Depends(get_db)):
     Drafting Endpoint: Synthesizes professional bidding artifacts.
     """
     return drafter.generate_draft(db, request.document_id, request.draft_type)
+
+@app.post("/export/docx")
+async def export_draft_docx(request: ExportRequest):
+    """
+    Export Engine: Binds AI drafts into formal Microsoft Word documents.
+    """
+    file_stream = ExportEngine.generate_docx(title=request.title, content=request.content)
+    
+    headers = {
+        'Content-Disposition': f'attachment; filename="{request.title.replace(" ", "_")}.docx"'
+    }
+    
+    return StreamingResponse(
+        file_stream,
+        headers=headers,
+        media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
 
 @app.get("/")
 async def health_check():

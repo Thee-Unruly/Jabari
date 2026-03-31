@@ -14,9 +14,10 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #050505;
+  /* ── Jabari cream theme ── */
+  color-scheme: light;
+  color: #1a1a1a;
+  background-color: #F5F2ED;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -30,6 +31,7 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #F5F2ED;
 }
 
 #root {
@@ -37,9 +39,9 @@ body {
 }
 
 .glass {
-  background: rgba(26, 26, 26, 0.8);
+  background: rgba(245, 242, 237, 0.8);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(26, 26, 26, 0.1);
 }
 
 .card-hover {
@@ -47,7 +49,7 @@ body {
 }
 
 .card-hover:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+  background: rgba(26, 26, 26, 0.04);
+  border-color: rgba(26, 26, 26, 0.2);
+  box-shadow: 0 0 20px rgba(26, 26, 26, 0.06);
 }

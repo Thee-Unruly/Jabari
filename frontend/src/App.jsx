@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Library, Plus, FileText, ChevronLeft, 
-  Settings, User, Info, PanelLeftClose, 
-  PanelLeftOpen, ExternalLink, Search,
-  MessageCircle, BarChart3, Database, Command, PenTool
+import {
+  Plus, FileText,
+  Settings, User,
+  PanelLeftClose, PanelLeftOpen,
+  MessageCircle, Database, Command, PenTool
 } from 'lucide-react';
 import axios from 'axios';
 import DropZone from './components/DropZone';
@@ -11,35 +11,42 @@ import AnalysisSidebar from './components/AnalysisSidebar';
 import ChatInterface from './components/ChatInterface';
 import DraftsView from './components/DraftsView';
 
+/* ─── Jabari cream design tokens (mirrors the marketing HTML) ─── */
+const T = {
+  cream: '#F5F2ED',
+  ink: '#1a1a1a',
+  ink2: '#3d3d3a',
+  muted: '#6b6b68',
+  faint: '#9a9a96',
+  border: 'rgba(26,26,26,0.10)',
+  border2: 'rgba(26,26,26,0.06)',
+  surface: 'rgba(26,26,26,0.03)',   // very faint tint on cream
+  surface2: 'rgba(26,26,26,0.06)',
+  serif: "'Lora', Georgia, serif",
+  sans: "'DM Sans', system-ui, sans-serif",
+};
+
 const App = () => {
   const [sources, setSources] = useState([]);
   const [activeDoc, setActiveDoc] = useState(null);
-  const [view, setView] = useState('vault'); // 'vault', 'assistant', or 'drafts'
+  const [view, setView] = useState('vault');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState('analysis'); // inner tab for vault view
+  const [activeTab, setActiveTab] = useState('analysis');
 
-  // Fetch initial Vault Repository from Postgres
   useEffect(() => {
     const fetchSources = async () => {
       try {
         const response = await axios.get('http://127.0.0.1:8500/sources');
-        const mappedSources = response.data.map(d => ({
-           ...d,
-           name: d.file_name
-        }));
-        setSources(mappedSources);
+        setSources(response.data.map(d => ({ ...d, name: d.file_name })));
       } catch (err) {
-        console.error("Vault Recall Failed:", err);
+        console.error('Vault Recall Failed:', err);
       }
     };
     fetchSources();
   }, []);
 
   const handleUploadSuccess = (data) => {
-    const newDoc = {
-      ...data,
-      name: data.file_name,
-    };
+    const newDoc = { ...data, name: data.file_name };
     setSources([newDoc, ...sources]);
     setActiveDoc(newDoc);
   };
@@ -51,190 +58,288 @@ const App = () => {
     }
   };
 
+  /* ── shared nav button style ── */
+  const navBtn = (active) => ({
+    padding: '10px',
+    borderRadius: '6px',
+    border: active ? `1px solid ${T.border}` : '1px solid transparent',
+    background: active ? T.cream : 'transparent',
+    color: active ? T.ink : T.faint,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: active ? '0 1px 4px rgba(26,26,26,0.08)' : 'none',
+  });
+
   return (
-    <div className="flex h-screen bg-jabari-bg text-jabari-nearWhite overflow-hidden selection:bg-jabari-cream selection:text-jabari-ink">
-      
-      {/* 🏛️ 1. PRIMARY NAVIGATION (STARK MONOCHROMATIC) */}
-      <nav className="w-20 bg-jabari-surface border-r border-jabari-border flex flex-col items-center py-8 gap-10">
-         <div className="w-10 h-10 rounded-sm bg-jabari-cream flex items-center justify-center mb-4">
-            <span className="font-serif font-black text-jabari-ink text-lg italic uppercase">J</span>
-         </div>
-         <div className="flex flex-col gap-6 flex-1">
-            <button 
-               onClick={() => setView('vault')}
-               className={`p-3 rounded-sm transition-all ${view === 'vault' ? 'bg-jabari-bg text-jabari-cream border border-jabari-border/30 shadow-lg shadow-black' : 'text-jabari-dim hover:text-jabari-gray'}`}
-               title="Secure Vault"
-            >
-               <Database className="w-6 h-6" />
-            </button>
-            <button 
-               onClick={() => setView('assistant')}
-               className={`p-3 rounded-sm transition-all ${view === 'assistant' ? 'bg-jabari-bg text-jabari-cream border border-jabari-border/30 shadow-lg shadow-black' : 'text-jabari-dim hover:text-jabari-gray'}`}
-               title="Neural Assistant"
-            >
-               <MessageCircle className="w-6 h-6" />
-            </button>
-            <button 
-               onClick={() => setView('drafts')}
-               className={`p-3 rounded-sm transition-all ${view === 'drafts' ? 'bg-jabari-bg text-jabari-cream border border-jabari-border/30 shadow-lg shadow-black' : 'text-jabari-dim hover:text-jabari-gray'}`}
-               title="Drafting Engine"
-            >
-               <PenTool className="w-6 h-6" />
-            </button>
-            <button className="p-3 text-jabari-dim hover:text-jabari-gray" title="Settings">
-               <Settings className="w-6 h-6" />
-            </button>
-         </div>
-         <div className="flex flex-col gap-6 p-4">
-            <div className="w-10 h-10 rounded-sm bg-jabari-surface2 border border-jabari-border flex items-center justify-center">
-               <User className="w-5 h-5 text-jabari-dim" />
-            </div>
-         </div>
+    <div style={{
+      display: 'flex',
+      height: '100vh',
+      background: T.cream,
+      color: T.ink,
+      overflow: 'hidden',
+      fontFamily: T.sans,
+    }}>
+
+      {/* ── 1. PRIMARY NAV ── */}
+      <nav style={{
+        width: '64px',
+        background: T.cream,
+        borderRight: `0.5px solid ${T.border}`,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '1.5rem 0',
+        gap: '8px',
+        flexShrink: 0,
+      }}>
+        {/* Logo */}
+        <div style={{
+          width: '36px',
+          height: '36px',
+          borderRadius: '6px',
+          background: T.ink,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '1.5rem',
+        }}>
+          <span style={{ fontFamily: T.serif, color: T.cream, fontSize: '16px', fontStyle: 'italic', fontWeight: 600 }}>J</span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+          <button style={navBtn(view === 'vault')} onClick={() => setView('vault')} title="Secure Vault">    <Database style={{ width: '18px', height: '18px' }} /></button>
+          <button style={navBtn(view === 'assistant')} onClick={() => setView('assistant')} title="Neural Assistant"><MessageCircle style={{ width: '18px', height: '18px' }} /></button>
+          <button style={navBtn(view === 'drafts')} onClick={() => setView('drafts')} title="Drafting Engine"> <PenTool style={{ width: '18px', height: '18px' }} /></button>
+          <button style={{ ...navBtn(false), marginTop: '8px' }} title="Settings"><Settings style={{ width: '18px', height: '18px' }} /></button>
+        </div>
+
+        {/* Avatar */}
+        <div style={{
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
+          border: `1px solid ${T.border}`,
+          background: T.surface2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <User style={{ width: '15px', height: '15px', color: T.muted }} />
+        </div>
       </nav>
 
-      {/* 🏛️ 2. VIEWPORT PARTITION */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        
-        {/* --- VIEW: VAULT (DOCUMENT MANAGEMENT) --- */}
+      {/* ── 2. VIEWPORT ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+        {/* ══ VAULT VIEW ══ */}
         {view === 'vault' && (
-          <div className="flex h-full animate-in fade-in slide-in-from-left-4 duration-500">
-             {/* Vault Repository Sidebar */}
-             <aside className={`bg-jabari-surface/50 border-r border-jabari-border flex flex-col transition-all duration-300 ${sidebarOpen ? 'w-80' : 'w-0 opacity-0 overflow-hidden'}`}>
-                <div className="p-6">
-                   <div className="text-[10px] uppercase tracking-widest text-jabari-dim font-black mb-6">VAULT REPOSITORY</div>
-                   <div className="space-y-2 overflow-y-auto custom-scrollbar max-h-[calc(100vh-200px)]">
-                      {sources.map((doc) => (
-                        <button
-                          key={doc.id}
-                          onClick={() => setActiveDoc(doc)}
-                          className={`w-full flex items-center gap-4 p-4 rounded-sm transition-all duration-300 group text-left border ${activeDoc?.id === doc.id ? 'bg-jabari-surface2 border-jabari-gray/20' : 'bg-transparent border-transparent hover:bg-jabari-surface2/40 hover:border-jabari-border'}`}
-                        >
-                          <FileText className={`w-5 h-5 ${activeDoc?.id === doc.id ? 'text-jabari-cream' : 'text-jabari-dim group-hover:text-jabari-gray'}`} />
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm truncate font-bold ${activeDoc?.id === doc.id ? 'text-jabari-white' : 'text-jabari-gray'}`}>{doc.name}</p>
-                            <div className="flex items-center gap-2 mt-1 opacity-50 uppercase text-[8px] font-black tracking-widest">
-                               <span>{doc.category || 'PDF'}</span>
-                               <div className="w-1 h-1 rounded-full bg-jabari-gray/40" />
-                               <span>{doc.analysis?.status || 'VERIFIED'}</span>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                   </div>
-                </div>
-                <div className="mt-auto p-6 border-t border-jabari-border">
-                   <button 
-                     onClick={() => setActiveDoc(null)}
-                     className="w-full py-4 rounded-sm bg-jabari-cream text-jabari-ink font-black text-[11px] uppercase tracking-widest hover:bg-jabari-white transition-all flex items-center justify-center gap-2 shadow-xl shadow-black/20"
-                   >
-                     <Plus className="w-4 h-4" /> RE-INITIALIZE VAULT
-                   </button>
-                </div>
-             </aside>
+          <div style={{ display: 'flex', height: '100%' }}>
 
-             {/* Main Content: Viewer or Dropzone */}
-             <main className="flex-1 flex flex-col bg-jabari-bg relative overflow-hidden">
-                <header className="h-20 border-b border-jabari-border flex items-center justify-between px-10">
-                   <div className="flex items-center gap-8">
-                      <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 text-jabari-dim hover:bg-jabari-surface2 rounded transition-colors">
-                        {sidebarOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
-                      </button>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-jabari-dim">JABARI_SYSTEM //</span>
-                        <span className="font-serif font-light text-xl tracking-wide text-jabari-cream italic">Secure Vault Repository</span>
+            {/* Sidebar */}
+            <aside style={{
+              width: sidebarOpen ? '280px' : '0',
+              opacity: sidebarOpen ? 1 : 0,
+              overflow: 'hidden',
+              borderRight: `0.5px solid ${T.border}`,
+              display: 'flex',
+              flexDirection: 'column',
+              transition: 'width 0.3s, opacity 0.3s',
+              background: T.cream,
+              flexShrink: 0,
+            }}>
+              <div style={{ padding: '1.5rem', flex: 1, overflow: 'hidden' }}>
+                <p style={{ fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint, fontWeight: 500, marginBottom: '1.25rem' }}>
+                  Vault Repository
+                </p>
+                <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {sources.map((doc) => (
+                    <button
+                      key={doc.id}
+                      onClick={() => setActiveDoc(doc)}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '10px 12px',
+                        borderRadius: '6px',
+                        border: `0.5px solid ${activeDoc?.id === doc.id ? T.border : 'transparent'}`,
+                        background: activeDoc?.id === doc.id ? T.surface2 : 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.15s',
+                        fontFamily: T.sans,
+                      }}
+                    >
+                      <FileText style={{ width: '16px', height: '16px', color: activeDoc?.id === doc.id ? T.ink : T.muted, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '13px', fontWeight: 500, color: T.ink, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</p>
+                        <p style={{ fontSize: '9px', color: T.faint, letterSpacing: '0.07em', textTransform: 'uppercase', margin: '3px 0 0', fontWeight: 500 }}>
+                          {doc.category || 'PDF'} · {doc.analysis?.status || 'Verified'}
+                        </p>
                       </div>
-                   </div>
-                </header>
-
-                <div className="flex-1 overflow-hidden relative">
-                   {!activeDoc ? (
-                     <div className="h-full flex items-center justify-center p-12 overflow-y-auto">
-                        <div className="max-w-3xl w-full">
-                           <div className="text-center mb-16">
-                              <h2 className="text-6xl font-serif font-light tracking-tight text-jabari-cream mb-6 italic leading-tight">Turn Days of Review <br/>Into Minutes</h2>
-                              <p className="text-jabari-gray/80 text-lg leading-relaxed max-w-xl mx-auto font-light">Ground your executive intelligence in a high-security, neural-indexed vault.</p>
-                           </div>
-                           <DropZone onUploadSuccess={handleUploadSuccess} />
-                        </div>
-                     </div>
-                   ) : (
-                     <div className="flex h-full animate-in zoom-in duration-500">
-                        {/* Stark Document Viewer Area */}
-                        <div className="flex-1 flex flex-col bg-jabari-bg border-r border-jabari-border">
-                           <div className="px-8 py-4 border-b border-jabari-border flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                 <FileText className="w-4 h-4 text-jabari-dim" />
-                                 <span className="text-[10px] font-black uppercase tracking-widest text-jabari-white">{activeDoc.name}</span>
-                              </div>
-                              <a href={`http://127.0.0.1:8500/files/${encodeURIComponent(activeDoc.file_name)}`} target="_blank" className="text-[10px] font-black text-jabari-dim hover:text-jabari-cream transition-all uppercase tracking-widest">Raw Access</a>
-                           </div>
-                           <div className="flex-1 p-8">
-                              <div className="w-full h-full border border-jabari-border/30 rounded-sm bg-jabari-surface overflow-hidden">
-                                 {activeDoc.category === 'pdf' ? (
-                                    <iframe 
-                                       id="pdf-viewer"
-                                       src={`http://127.0.0.1:8500/files/${encodeURIComponent(activeDoc.file_name)}#toolbar=0&navpanes=0`} 
-                                       className="w-full h-full border-none invert brightness-[0.7] grayscale contrast-[1.2]"
-                                       title="Vault Material"
-                                    />
-                                 ) : (
-                                    <div className="p-16 overflow-y-auto h-full font-serif text-jabari-nearWhite/90 leading-relaxed whitespace-pre-wrap selection:bg-jabari-cream selection:text-jabari-ink">
-                                       {activeDoc.full_content}
-                                    </div>
-                                 )}
-                              </div>
-                           </div>
-                        </div>
-
-                        {/* Analysis Partition Toggle */}
-                        <div className="w-[480px] bg-jabari-bg flex flex-col">
-                           <div className="h-14 border-b border-jabari-border flex bg-jabari-surface">
-                              <button onClick={() => setActiveTab('analysis')} className={`flex-1 text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'analysis' ? 'text-jabari-cream border-b-2 border-jabari-cream' : 'text-jabari-dim hover:text-jabari-gray'}`}>Briefing</button>
-                              <button onClick={() => setActiveTab('chat')} className={`flex-1 text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'chat' ? 'text-jabari-cream border-b-2 border-jabari-cream' : 'text-jabari-dim hover:text-jabari-gray'}`}>Fast Query</button>
-                           </div>
-                           <div className="flex-1 overflow-hidden">
-                              {activeTab === 'analysis' ? <AnalysisSidebar data={activeDoc} onJumpToPage={jumpToPage} /> : <ChatInterface documentId={activeDoc.id} />}
-                           </div>
-                        </div>
-                     </div>
-                   )}
+                    </button>
+                  ))}
                 </div>
-             </main>
+              </div>
+
+              {/* Re-initialize */}
+              <div style={{ padding: '1.25rem', borderTop: `0.5px solid ${T.border}` }}>
+                <button
+                  onClick={() => setActiveDoc(null)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '24px',
+                    border: 'none',
+                    background: T.ink,
+                    color: T.cream,
+                    fontSize: '11px',
+                    fontFamily: T.sans,
+                    fontWeight: 500,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'opacity 0.15s',
+                  }}
+                  onMouseOver={e => e.currentTarget.style.opacity = '0.8'}
+                  onMouseOut={e => e.currentTarget.style.opacity = '1'}
+                >
+                  <Plus style={{ width: '14px', height: '14px' }} /> Re-initialize Vault
+                </button>
+              </div>
+            </aside>
+
+            {/* Main */}
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: T.cream, overflow: 'hidden' }}>
+              {/* Header */}
+              <header style={{
+                height: '54px',
+                borderBottom: `0.5px solid ${T.border}`,
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 2rem',
+                gap: '1rem',
+                background: T.cream,
+              }}>
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  style={{ padding: '6px', borderRadius: '6px', border: 'none', background: 'transparent', color: T.muted, cursor: 'pointer' }}
+                >
+                  {sidebarOpen ? <PanelLeftClose style={{ width: '18px', height: '18px' }} /> : <PanelLeftOpen style={{ width: '18px', height: '18px' }} />}
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint }}>Jabari System //</span>
+                  <span style={{ fontFamily: T.serif, fontSize: '17px', fontWeight: 400, fontStyle: 'italic', color: T.ink }}>Secure Vault Repository</span>
+                </div>
+              </header>
+
+              {/* Content */}
+              <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+                {!activeDoc ? (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem', overflowY: 'auto' }}>
+                    <div style={{ maxWidth: '640px', width: '100%' }}>
+                      <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                        <h2 style={{ fontFamily: T.serif, fontSize: 'clamp(32px,4.5vw,52px)', fontWeight: 500, color: T.ink, fontStyle: 'italic', lineHeight: 1.08, letterSpacing: '-0.02em', marginBottom: '1rem' }}>
+                          Turn Days of Review<br />Into Minutes
+                        </h2>
+                        <p style={{ fontSize: '15px', color: T.muted, lineHeight: 1.7, maxWidth: '420px', margin: '0 auto' }}>
+                          Ground your bid intelligence in a secure, AI-indexed vault.
+                        </p>
+                      </div>
+                      <DropZone onUploadSuccess={handleUploadSuccess} />
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', height: '100%' }}>
+                    {/* PDF Viewer */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: `0.5px solid ${T.border}` }}>
+                      <div style={{ padding: '0.75rem 1.5rem', borderBottom: `0.5px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <FileText style={{ width: '14px', height: '14px', color: T.muted }} />
+                          <span style={{ fontSize: '12px', fontWeight: 500, color: T.ink }}>{activeDoc.name}</span>
+                        </div>
+                        <a href={`http://127.0.0.1:8500/files/${encodeURIComponent(activeDoc.file_name)}`} target="_blank" rel="noreferrer"
+                          style={{ fontSize: '11px', color: T.muted, letterSpacing: '0.06em', textTransform: 'uppercase', textDecoration: 'none' }}>
+                          Raw Access
+                        </a>
+                      </div>
+                      <div style={{ flex: 1, padding: '1.5rem' }}>
+                        <div style={{ width: '100%', height: '100%', border: `0.5px solid ${T.border}`, borderRadius: '8px', overflow: 'hidden', background: '#fff' }}>
+                          {activeDoc.category === 'pdf' ? (
+                            <iframe
+                              id="pdf-viewer"
+                              src={`http://127.0.0.1:8500/files/${encodeURIComponent(activeDoc.file_name)}#toolbar=0&navpanes=0`}
+                              style={{ width: '100%', height: '100%', border: 'none' }}
+                              title="Vault Material"
+                            />
+                          ) : (
+                            <div style={{ padding: '2rem', overflowY: 'auto', height: '100%', fontFamily: T.serif, color: T.ink2, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+                              {activeDoc.full_content}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Analysis panel */}
+                    <div style={{ width: '420px', display: 'flex', flexDirection: 'column', flexShrink: 0, background: T.cream }}>
+                      <div style={{ height: '46px', borderBottom: `0.5px solid ${T.border}`, display: 'flex' }}>
+                        {['analysis', 'chat'].map(tab => (
+                          <button key={tab} onClick={() => setActiveTab(tab)} style={{
+                            flex: 1, fontSize: '10px', fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase',
+                            border: 'none', borderBottom: activeTab === tab ? `2px solid ${T.ink}` : '2px solid transparent',
+                            background: 'transparent', color: activeTab === tab ? T.ink : T.faint, cursor: 'pointer', fontFamily: T.sans,
+                          }}>
+                            {tab === 'analysis' ? 'Briefing' : 'Fast Query'}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        {activeTab === 'analysis'
+                          ? <AnalysisSidebar data={activeDoc} onJumpToPage={jumpToPage} />
+                          : <ChatInterface documentId={activeDoc.id} />}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </main>
           </div>
         )}
 
+        {/* ══ ASSISTANT VIEW ══ */}
         {view === 'assistant' && (
-          <div className="flex-1 flex flex-col bg-jabari-bg animate-in slide-in-from-right-4 duration-500 h-full">
-             <header className="h-20 border-b border-jabari-border flex items-center justify-between px-10">
-                <div className="flex items-center gap-3">
-                   <Command className="w-5 h-5 text-jabari-cream" />
-                   <div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-jabari-dim leading-none">NEURAL CENTRAL //</span>
-                      <h2 className="font-serif font-light text-xl tracking-wide text-jabari-cream italic leading-none mt-1">Jabari Executive Assistant</h2>
-                   </div>
-                </div>
-                <div className="text-[9px] font-black uppercase tracking-widest text-jabari-dim opacity-40">Phase 2 Intelligent Chat</div>
-             </header>
-             <div className="flex-1 max-w-5xl mx-auto w-full p-8 overflow-hidden flex flex-col">
-                <div className="flex-1 rounded-sm border border-jabari-border/30 bg-jabari-surface/40 overflow-hidden shadow-2xl">
-                   <ChatInterface documentId={activeDoc?.id} initialSources={sources} />
-                </div>
-             </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: T.cream, height: '100%' }}>
+            <header style={{ height: '54px', borderBottom: `0.5px solid ${T.border}`, display: 'flex', alignItems: 'center', padding: '0 2rem', gap: '10px' }}>
+              <Command style={{ width: '16px', height: '16px', color: T.ink }} />
+              <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint }}>Neural Central //</span>
+              <span style={{ fontFamily: T.serif, fontSize: '17px', fontWeight: 400, fontStyle: 'italic', color: T.ink }}>Jabari Executive Assistant</span>
+            </header>
+            <div style={{ flex: 1, maxWidth: '900px', margin: '0 auto', width: '100%', padding: '2rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ flex: 1, borderRadius: '8px', border: `0.5px solid ${T.border}`, overflow: 'hidden' }}>
+                <ChatInterface documentId={activeDoc?.id} initialSources={sources} />
+              </div>
+            </div>
           </div>
         )}
 
+        {/* ══ DRAFTS VIEW ══ */}
         {view === 'drafts' && (
-          <div className="flex-1 flex flex-col bg-jabari-bg animate-in slide-in-from-bottom-4 duration-700 h-full">
-             <header className="h-20 border-b border-jabari-border flex items-center justify-between px-10">
-                <div className="flex items-center gap-3">
-                   <PenTool className="w-5 h-5 text-jabari-cream" />
-                   <div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-jabari-dim leading-none">DRAFTING COMMAND //</span>
-                      <h2 className="font-serif font-light text-xl tracking-wide text-jabari-cream italic leading-none mt-1">Bid Production Studio</h2>
-                   </div>
-                </div>
-             </header>
-             <DraftsView sources={sources} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: T.cream, height: '100%' }}>
+            <header style={{ height: '54px', borderBottom: `0.5px solid ${T.border}`, display: 'flex', alignItems: 'center', padding: '0 2rem', gap: '10px' }}>
+              <PenTool style={{ width: '16px', height: '16px', color: T.ink }} />
+              <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint }}>Drafting Command //</span>
+              <span style={{ fontFamily: T.serif, fontSize: '17px', fontWeight: 400, fontStyle: 'italic', color: T.ink }}>Bid Production Studio</span>
+            </header>
+            <DraftsView sources={sources} />
           </div>
         )}
       </div>
