@@ -2,8 +2,9 @@ import os
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from app.services.detector import DocumentDetector
 from app.services.extractor import DocumentExtractor
 from app.services.chunker import DocumentChunker
@@ -21,8 +22,11 @@ app.add_middleware(
 )
 
 # Configuration: Storage folders
-UPLOAD_DIR = "backend/data/uploads"
+UPLOAD_DIR = os.path.abspath("backend/data/uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Mount the uploads directory to serve original files
+app.mount("/files", StaticFiles(directory=UPLOAD_DIR), name="files")
 
 class DocumentChunk(BaseModel):
     text: str
