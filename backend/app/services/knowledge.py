@@ -201,10 +201,31 @@ class KnowledgeService:
 
     @staticmethod
     def get_benchmarks(query: str, db: Session, limit: int = 20) -> List[Dict]:
-        term = f"%{query}%"
-        results = db.query(ProcurementRecord).filter(
-            ProcurementRecord.title.ilike(term) | ProcurementRecord.buyer_name.ilike(term)
-        ).order_by(ProcurementRecord.date_published.desc()).limit(limit).all()
+        """
+        Improved search that breaks the query into keywords and finds records 
+        matching any of the significant terms.
+        """
+        # Cleanup query and extract significant keywords
+        stop_words = {"who", "are", "the", "most", "successful", "winning", "for", "from", "at", "to", "in", "is", "a", "an", "and", "of", "with"}
+        keywords = [word.strip('?.,!').lower() for word in query.split() if word.lower() not in stop_words and len(word) > 2]
+        
+        if not keywords:
+            # Fallback to simple title search if no keywords found
+            term = f"%{query}%"
+            results = db.query(ProcurementRecord).filter(
+                ProcurementRecord.title.ilike(term) | ProcurementRecord.buyer_name.ilike(term)
+            ).order_by(ProcurementRecord.date_published.desc()).limit(limit).all()
+        else:
+            # Build an 'OR' filter for all keywords
+            from sqlalchemy import or_
+            filters = []
+            for kw in keywords:
+                term = f"%{kw}%"
+                filters.append(ProcurementRecord.title.ilike(term))
+                filters.append(ProcurementRecord.buyer_name.ilike(term))
+            
+            results = db.query(ProcurementRecord).filter(or_(*filters)).order_by(ProcurementRecord.date_published.desc()).limit(limit).all()
+
         return [{
             "ocid": r.ocid, "title": r.title, "buyer": r.buyer_name, 
             "amount": r.amount, "currency": r.currency, "date": r.date_published.isoformat() if r.date_published else None,
