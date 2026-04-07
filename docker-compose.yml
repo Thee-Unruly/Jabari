@@ -3,6 +3,7 @@ services:
   db:
     image: ankane/pgvector:latest
     container_name: jabari-db
+    restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -20,6 +21,7 @@ services:
   backend:
     build: ./backend
     container_name: jabari-backend
+    restart: always
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
       - GROQ_API_KEY=${GROQ_API_KEY}
@@ -38,6 +40,7 @@ services:
       args:
         - VITE_API_URL=http://localhost:8000
     container_name: jabari-frontend
+    restart: always
     ports:
       - "80:80"
     depends_on:
