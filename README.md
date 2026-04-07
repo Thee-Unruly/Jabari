@@ -33,3 +33,5 @@ Jabari is a dual-engine AI platform designed for high-stakes procurement. It com
 *   **AI:** Groq (Llama-3 models), HuggingFace Transformers
 
 ---
+
+*Built for precision bidding.*
