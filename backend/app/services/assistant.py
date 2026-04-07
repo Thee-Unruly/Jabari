@@ -46,8 +46,9 @@ class JabariAssistant:
         # 3. Supplemental Grounding: Search Market Intelligence (OCDS)
         # If the user asks about price, awards, or benchmarks
         benchmarks = []
-        if any(keyword in question.lower() for keyword in ["price", "cost", "award", "benchmark", "historical", "market"]):
-            benchmarks = KnowledgeService.get_benchmarks(question[:50], db) # Simple prefix search
+        market_keywords = ["price", "cost", "award", "benchmark", "historical", "market", "tender", "vendor", "agency", "buyer"]
+        if any(keyword in question.lower() for keyword in market_keywords):
+            benchmarks = KnowledgeService.get_benchmarks(question[:100], db) # Increased prefix length for better search
         
         # 4. Construct the Grounded Context
         context_blocks = []
