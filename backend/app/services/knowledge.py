@@ -302,19 +302,17 @@ class KnowledgeService:
             return {"success": False, "error": str(e)}
 
     @staticmethod
-    def get_stats() -> Dict[str, Any]:
+    def get_stats(db: Session) -> Dict[str, Any]:
         """Returns aggregate stats from the knowledge base."""
-        db = SessionLocal()
         try:
             total = db.query(ProcurementRecord).count()
             return {"total_records": total}
-        finally:
-            db.close()
+        except Exception as e:
+            return {"total_records": 0, "error": str(e)}
 
     @staticmethod
-    def get_market_insights() -> Dict[str, Any]:
+    def get_market_insights(db: Session) -> Dict[str, Any]:
         """Aggregate data for the Knowledge Hub dashboard."""
-        db = SessionLocal()
         try:
             record_count = db.query(ProcurementRecord).count()
             if record_count == 0:
@@ -350,7 +348,12 @@ class KnowledgeService:
                 "leaderboard": [dict(row._asdict()) for row in leaderboard],
                 "sectors": [dict(row._asdict()) for row in sectors]
             }
-        finally:
-            db.close()
+        except Exception as e:
+            print(f"Insights Error: {e}")
+            return {
+                "summary": {"total_value": 0, "total_records": 0, "avg_value": 0},
+                "leaderboard": [],
+                "sectors": []
+            }
 
 from sqlalchemy import text
