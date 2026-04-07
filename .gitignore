@@ -12,6 +12,8 @@ frontend/dist/
 
 # Data (large OCDS files — ingested into DB, not stored in Git)
 backend/data/uploads/
+Knowledge/
+*.jsonl
 *.jsonl.gz
 
 # System

@@ -21,12 +21,25 @@ Jabari is a dual-engine AI platform designed for high-stakes procurement. It com
 *   **Grounded Reasoning:** Uses Groq-powered LLMs to answer queries based *only* on your verified data.
 *   **Intelligence Blending:** Automatically calculates market averages from external data while referencing your internal technical strengths.
 
-## 🚀 One-Click Launch (Recommended)
+## 🚀 Getting Started (Zero-Terminal Workflow)
 
-Since you are on Windows, you don't need to type commands every day:
-1.  **Double-click `JabariLauncher.bat`** in the root folder.
-2.  Press **[1]** to start Jabari in the background.
-3.  Open your browser to: **[http://localhost](http://localhost)**
+Jabari is designed to be managed entirely via the **Docker Desktop UI** after the initial setup.
+
+### 1. Initial Setup (One-time only)
+Run this once in your terminal to register the project with Docker Desktop:
+```bash
+docker-compose up -d --build
+```
+
+### 2. Daily Operation
+1.  Open **Docker Desktop**.
+2.  Go to the **"Containers"** tab.
+3.  Find the **"Jabari"** group.
+4.  Click the **▶️ Start** button to wake up the whole platform.
+
+### 3. Access
+*   **User Dashboard:** [http://localhost](http://localhost)
+*   **Market Database Stats:** [http://localhost:8000/knowledge/stats](http://localhost:8000/knowledge/stats)
 
 ---
 

@@ -3,7 +3,7 @@ import {
   Plus, FileText,
   Settings, User,
   PanelLeftClose, PanelLeftOpen,
-  MessageCircle, Database, Command, PenTool, Globe
+  MessageCircle, Database, Command, PenTool, Globe, LayoutGrid
 } from 'lucide-react';
 import axios from 'axios';
 import DropZone from './components/DropZone';
@@ -11,6 +11,7 @@ import AnalysisSidebar from './components/AnalysisSidebar';
 import ChatInterface from './components/ChatInterface';
 import DraftsView from './components/DraftsView';
 import KnowledgeHub from './components/KnowledgeHub';
+import IntegrationsHub from './components/IntegrationsHub';
 
 /* ─── Jabari cream design tokens (mirrors the marketing HTML) ─── */
 const T = {
@@ -139,6 +140,7 @@ const App = () => {
           <button style={navBtn(view === 'assistant')} onClick={() => setView('assistant')} title="Neural Assistant"><MessageCircle style={{ width: '18px', height: '18px' }} /></button>
           <button style={navBtn(view === 'drafts')} onClick={() => setView('drafts')} title="Drafting Engine"> <PenTool style={{ width: '18px', height: '18px' }} /></button>
           <button style={navBtn(view === 'knowledge')} onClick={() => setView('knowledge')} title="Jabari Knowledge"><Globe style={{ width: '18px', height: '18px' }} /></button>
+          <button style={navBtn(view === 'integrations')} onClick={() => setView('integrations')} title="Ecosystem Integrations"><LayoutGrid style={{ width: '18px', height: '18px' }} /></button>
           <button style={{ ...navBtn(false), marginTop: '8px' }} title="Settings"><Settings style={{ width: '18px', height: '18px' }} /></button>
         </div>
 
@@ -414,6 +416,20 @@ const App = () => {
             </header>
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <KnowledgeHub />
+            </div>
+          </div>
+        )}
+
+        {/* ══ INTEGRATIONS VIEW ══ */}
+        {view === 'integrations' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: T.cream, height: '100%' }}>
+            <header style={{ height: '54px', borderBottom: `0.5px solid ${T.border}`, display: 'flex', alignItems: 'center', padding: '0 2rem', gap: '10px' }}>
+              <LayoutGrid style={{ width: '16px', height: '16px', color: T.ink }} />
+              <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint }}>Ecosystem //</span>
+              <span style={{ fontFamily: T.serif, fontSize: '17px', fontWeight: 400, fontStyle: 'italic', color: T.ink }}>Integrations Hub</span>
+            </header>
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              <IntegrationsHub />
             </div>
           </div>
         )}
