@@ -125,24 +125,10 @@ const KnowledgeHub = () => {
         <div style={{ display: 'flex', height: '100%', background: T.cream, fontFamily: T.sans }}>
             
             {/* ── LEFT SIDEBAR ── */}
-            <aside style={{ width: '380px', borderRight: `0.5px solid ${T.border}`, padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', overflowY: 'auto' }}>
+            <aside style={{ width: '340px', borderRight: `0.5px solid ${T.border}`, padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', overflowY: 'auto' }}>
                 <div>
-                    <h1 style={{ fontFamily: T.serif, fontSize: '24px', fontStyle: 'italic', marginBottom: '4px' }}>Market Intelligence</h1>
+                    <h1 style={{ fontFamily: T.serif, fontSize: '24px', fontStyle: 'italic', marginBottom: '4px' }}>Market Hub</h1>
                     <p style={{ fontSize: '11px', color: T.faint, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jabari Knowledge Engine</p>
-                </div>
-
-                <div style={{ position: 'relative' }}>
-                    <input 
-                        value={query}
-                        onChange={e => setQuery(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                        placeholder="Search or ask a question..."
-                        style={{ width: '100%', padding: '12px 40px 12px 14px', border: `0.5px solid ${T.border}`, borderRadius: '8px', background: '#fff', fontSize: '13px', outline: 'none' }}
-                    />
-                    <button onClick={handleSearch} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.muted }}>
-                        {isThinking ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} color={T.accent} />}
-                    </button>
-                    {results.length > 0 && <button onClick={() => {setQuery(''); setResults([]); setAiBrief(null);}} style={{ fontSize: '10px', marginTop: '8px', color: T.accent, background: 'none', border: 'none', cursor: 'pointer' }}>Clear Dashboard</button>}
                 </div>
 
                 <div style={{ padding: '1.5rem', borderRadius: '12px', background: '#fff', border: `0.5px solid ${T.border}` }}>
@@ -152,7 +138,7 @@ const KnowledgeHub = () => {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                         <h2 style={{ fontSize: '32px', fontWeight: 600, margin: 0 }}>{stats.total_records.toLocaleString()}</h2>
-                        <span style={{ fontSize: '12px', color: T.muted }}>Tenders Indexed</span>
+                        <span style={{ fontSize: '12px', color: T.muted }}>Verified</span>
                     </div>
                 </div>
 
@@ -178,113 +164,158 @@ const KnowledgeHub = () => {
             </aside>
 
             {/* ── MAIN CONTENT ── */}
-            <main style={{ flex: 1, padding: '3rem', overflowY: 'auto' }}>
+            <main style={{ flex: 1, padding: '0', overflowY: 'auto' }}>
                 
-                {/* 🧠 NEURAL BRIEF (Appears when asking questions) */}
-                {aiBrief && (
-                    <div style={{ 
-                        background: '#fff', border: `1px solid ${T.accent}`, borderRadius: '16px', 
-                        padding: '2rem', marginBottom: '3rem', boxShadow: '0 8px 32px -10px rgba(184, 134, 11, 0.15)',
-                        position: 'relative', overflow: 'hidden'
-                    }}>
-                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: T.accent }}></div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem' }}>
-                            <div style={{ background: T.accent, color: '#fff', padding: '6px', borderRadius: '8px' }}><Brain size={18}/></div>
-                            <h3 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: T.accent }}>Jabari Intelligence // Market Brief</h3>
+                {/* 🔍 TOP FLOATING OMNIBAR */}
+                <div style={{ 
+                    position: 'sticky', top: 0, zIndex: 10, padding: '1.5rem 3rem', 
+                    background: 'rgba(245, 242, 237, 0.8)', backdropFilter: 'blur(8px)',
+                    borderBottom: `0.5px solid ${T.border}`
+                }}>
+                    <div style={{ maxWidth: '1000px', margin: '0 auto', position: 'relative' }}>
+                        <input 
+                            value={query}
+                            onChange={e => setQuery(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                            placeholder="Connect to market intelligence... Ask a question or search tenders"
+                            style={{ 
+                                width: '100%', padding: '16px 50px 16px 20px', 
+                                border: `1px solid ${T.border}`, borderRadius: '12px', 
+                                background: '#fff', fontSize: '15px', outline: 'none',
+                                boxShadow: '0 4px 20px -5px rgba(0,0,0,0.05)',
+                                fontFamily: T.sans
+                            }}
+                        />
+                        <div style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            {isThinking && <Loader2 size={20} className="animate-spin" color={T.accent} />}
+                            <button onClick={handleSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.accent }}>
+                                <Sparkles size={22} />
+                            </button>
                         </div>
-                        <div style={{ fontSize: '16px', color: T.ink, lineHeight: 1.6, whiteSpace: 'pre-wrap', fontFamily: T.serif }}>
-                            {aiBrief}
-                        </div>
+                        {(results.length > 0 || aiBrief) && (
+                            <button 
+                                onClick={() => {setQuery(''); setResults([]); setAiBrief(null);}} 
+                                style={{ position: 'absolute', right: '15px', bottom: '-25px', fontSize: '10px', fontWeight: 600, color: T.accent, background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                                CLEAR DASHBOARD
+                            </button>
+                        )}
                     </div>
-                )}
+                </div>
 
-                {results.length === 0 && !isSearching && !isThinking ? (
-                    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-                        <div style={{ marginBottom: '3rem' }}>
-                            <h2 style={{ fontFamily: T.serif, fontSize: '36px', fontStyle: 'italic', marginBottom: '8px' }}>Market Command Center</h2>
-                            <p style={{ color: T.muted, fontSize: '15px' }}>Aggregate strategic intelligence across the historical procurement landscape.</p>
-                        </div>
-
-                        {/* Summary Cards */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
-                            <div style={{ padding: '1.5rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '12px' }}>
-                                <p style={{ fontSize: '10px', fontWeight: 600, color: T.faint, textTransform: 'uppercase', marginBottom: '1rem' }}>Total Market Exposure</p>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                                    <span style={{ fontSize: '12px', color: T.muted }}>KSh</span>
-                                    <h3 style={{ fontSize: '28px', fontWeight: 600, margin: 0 }}>{((insights?.summary?.total_value || 0) / 1e9).toFixed(1)}B</h3>
-                                </div>
+                <div style={{ padding: '3rem' }}>
+                    {/* 🧠 NEURAL BRIEF */}
+                    {aiBrief && (
+                        <div style={{ 
+                            maxWidth: '1000px', margin: '0 auto 3rem',
+                            background: '#fff', border: `1px solid ${T.accent}`, borderRadius: '16px', 
+                            padding: '2rem', boxShadow: '0 8px 32px -10px rgba(184, 134, 11, 0.15)',
+                            position: 'relative', overflow: 'hidden'
+                        }}>
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: T.accent }}></div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem' }}>
+                                <div style={{ background: T.accent, color: '#fff', padding: '6px', borderRadius: '8px' }}><Brain size={18}/></div>
+                                <h3 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: T.accent }}>Market Intelligence Brief</h3>
                             </div>
-                            <div style={{ padding: '1.5rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '12px' }}>
-                                <p style={{ fontSize: '10px', fontWeight: 600, color: T.faint, textTransform: 'uppercase', marginBottom: '1rem' }}>Identified Benchmarks</p>
-                                <h3 style={{ fontSize: '28px', fontWeight: 600, margin: 0 }}>{(insights?.summary?.total_records || 0).toLocaleString()}</h3>
-                            </div>
-                            <div style={{ padding: '1.5rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '12px' }}>
-                                <p style={{ fontSize: '10px', fontWeight: 600, color: T.faint, textTransform: 'uppercase', marginBottom: '1rem' }}>Avg Award Value</p>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                                    <span style={{ fontSize: '12px', color: T.muted }}>KSh</span>
-                                    <h3 style={{ fontSize: '28px', fontWeight: 600, margin: 0 }}>{((insights?.summary?.avg_value || 0) / 1e6).toFixed(1)}M</h3>
-                                </div>
+                            <div style={{ fontSize: '16px', color: T.ink, lineHeight: 1.6, whiteSpace: 'pre-wrap', fontFamily: T.serif }}>
+                                {aiBrief}
                             </div>
                         </div>
+                    )}
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
-                            <div style={{ padding: '2rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '16px' }}>
-                                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <TrendingUp size={16} color={T.accent} /> Top Procuring Agencies
-                                </h4>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                    {insights?.leaderboard.map((b, i) => (
-                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '13px', fontWeight: 500 }}>{b.name}</span>
-                                            <div style={{ textAlign: 'right' }}>
-                                                <span style={{ fontSize: '12px', fontWeight: 600 }}>{b.count} Tenders</span>
-                                                <p style={{ fontSize: '10px', color: T.faint, margin: 0 }}>KSh {(b.value / 1e6).toFixed(1)}M</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                    {results.length === 0 && !isSearching && !isThinking ? (
+                        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+                            <div style={{ marginBottom: '3rem' }}>
+                                <h2 style={{ fontFamily: T.serif, fontSize: '36px', fontStyle: 'italic', marginBottom: '8px' }}>Market Command Center</h2>
+                                <p style={{ color: T.muted, fontSize: '15px' }}>Strategic intelligence overview of the historical procurement landscape.</p>
                             </div>
 
-                            <div style={{ padding: '2rem', background: T.ink, borderRadius: '16px', color: '#fff' }}>
-                                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '1.5rem' }}>Market Share by Sector</h4>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                    {insights?.sectors.map((s, i) => (
-                                        <div key={i}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '6px' }}>
-                                                <span>{s.category || 'General'}</span>
-                                                <span style={{ color: T.accent }}>{(s.value / (insights.summary.total_value || 1) * 100).toFixed(0)}%</span>
-                                            </div>
-                                            <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px' }}>
-                                                <div style={{ width: `${(s.value / (insights.summary.total_value || 1) * 100)}%`, height: '100%', background: T.accent }}></div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-                        <h2 style={{ fontFamily: T.serif, fontSize: '32px', marginBottom: '2.5rem' }}>Market Findings ({results.length})</h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            {results.map((r, i) => (
-                                <div key={i} style={{ padding: '2rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '16px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', background: T.surface, color: T.muted, borderRadius: '4px', textTransform: 'uppercase' }}>{r.status || 'Awarded'}</span>
-                                            <h3 style={{ fontSize: '18px', fontFamily: T.serif, margin: '8px 0 4px' }}>{r.title}</h3>
-                                            <p style={{ fontSize: '13px', color: T.muted }}>{r.buyer}</p>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <p style={{ fontSize: '20px', fontWeight: 600 }}>{r.currency} {r.amount.toLocaleString()}</p>
-                                            <p style={{ fontSize: '11px', color: T.faint }}>OCID: {r.ocid}</p>
-                                        </div>
+                            {/* Summary Cards */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
+                                <div style={{ padding: '1.5rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '12px' }}>
+                                    <p style={{ fontSize: '10px', fontWeight: 600, color: T.faint, textTransform: 'uppercase', marginBottom: '1rem' }}>Total Market Exposure</p>
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                                        <span style={{ fontSize: '12px', color: T.muted }}>KSh</span>
+                                        <h3 style={{ fontSize: '28px', fontWeight: 600, margin: 0 }}>{((insights?.summary?.total_value || 0) / 1e9).toFixed(1)}B</h3>
                                     </div>
                                 </div>
-                            ))}
+                                <div style={{ padding: '1.5rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '12px' }}>
+                                    <p style={{ fontSize: '10px', fontWeight: 600, color: T.faint, textTransform: 'uppercase', marginBottom: '1rem' }}>Identified Benchmarks</p>
+                                    <h3 style={{ fontSize: '28px', fontWeight: 600, margin: 0 }}>{(insights?.summary?.total_records || 0).toLocaleString()}</h3>
+                                </div>
+                                <div style={{ padding: '1.5rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '12px' }}>
+                                    <p style={{ fontSize: '10px', fontWeight: 600, color: T.faint, textTransform: 'uppercase', marginBottom: '1rem' }}>Avg Award Value</p>
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                                        <span style={{ fontSize: '12px', color: T.muted }}>KSh</span>
+                                        <h3 style={{ fontSize: '28px', fontWeight: 600, margin: 0 }}>{((insights?.summary?.avg_value || 0) / 1e6).toFixed(1)}M</h3>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
+                                <div style={{ padding: '2rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '16px' }}>
+                                    <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <TrendingUp size={16} color={T.accent} /> Top Procuring Agencies
+                                    </h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                        {insights?.leaderboard.map((b, i) => (
+                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '13px', fontWeight: 500 }}>{b.name}</span>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <span style={{ fontSize: '12px', fontWeight: 600 }}>{b.count} Tenders</span>
+                                                    <p style={{ fontSize: '10px', color: T.faint, margin: 0 }}>KSh {(b.value / 1e6).toFixed(1)}M</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div style={{ padding: '2rem', background: T.ink, borderRadius: '16px', color: '#fff' }}>
+                                    <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '1.5rem' }}>Market Share by Sector</h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                        {insights?.sectors.map((s, i) => (
+                                            <div key={i}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '6px' }}>
+                                                    <span>{s.category || 'General'}</span>
+                                                    <span style={{ color: T.accent }}>{(s.value / (insights.summary.total_value || 1) * 100).toFixed(0)}%</span>
+                                                </div>
+                                                <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px' }}>
+                                                    <div style={{ width: `${(s.value / (insights.summary.total_value || 1) * 100)}%`, height: '100%', background: T.accent }}></div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    ) : (
+                        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+                            <h2 style={{ fontFamily: T.serif, fontSize: '32px', marginBottom: '2.5rem' }}>Market Findings ({results.length})</h2>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                {results.map((r, i) => (
+                                    <div key={i} style={{ padding: '2.5rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '20px', transition: 'all 0.2s ease' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', background: T.surface, color: T.muted, borderRadius: '4px', textTransform: 'uppercase' }}>{r.status || 'Awarded'}</span>
+                                                <h3 style={{ fontSize: '20px', fontFamily: T.serif, margin: '12px 0 6px', fontWeight: 500 }}>{r.title}</h3>
+                                                <p style={{ fontSize: '14px', color: T.muted }}>{r.buyer}</p>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <p style={{ fontSize: '24px', fontWeight: 600, color: T.ink }}>{r.currency} {r.amount.toLocaleString()}</p>
+                                                <p style={{ fontSize: '11px', color: T.faint }}>OCID: {r.ocid}</p>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '2rem', borderTop: `0.5px solid ${T.border}`, paddingTop: '1.25rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: T.muted }}><MapPin size={16} /> {r.location || 'Nationwide'}</div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: T.muted }}><Database size={16} /> {r.category || 'General'}</div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: T.muted }}><Calendar size={16} /> {r.date ? new Date(r.date).toLocaleDateString() : 'Historical'}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </main>
 
             <style>{`
