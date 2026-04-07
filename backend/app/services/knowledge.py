@@ -85,28 +85,34 @@ class KnowledgeService:
                         # OCDS JSON structure extraction
                         # Note: OCDS can have multiple awards, we take the first or the tender value
                         tender = data.get("tender", {})
-                        awards = data.get("awards", [{}])
-                        first_award = awards[0] if awards else {}
+                        awards = data.get("awards", [])
                         
                         buyer_name = data.get("buyer", {}).get("name") or tender.get("procuringEntity", {}).get("name")
                         if not buyer_name and data.get("parties"):
-                            # Find party with role 'buyer' or 'procuringEntity'
                             for party in data["parties"]:
                                 if "buyer" in party.get("roles", []) or "procuringEntity" in party.get("roles", []):
                                     buyer_name = party.get("name")
                                     break
 
-                        amount = float(first_award.get("value", {}).get("amount", tender.get("value", {}).get("amount", 0)))
-                        currency = first_award.get("value", {}).get("currency", tender.get("value", {}).get("currency", "KES"))
+                        # Sum all awards if they exist, else fallback to tender value
+                        total_awarded = sum(float(a.get("value", {}).get("amount", 0)) for a in awards)
+                        amount = total_awarded if total_awarded > 0 else float(tender.get("value", {}).get("amount", 0))
+                        
+                        # Get currency from first award or tender
+                        currency = "KES"
+                        if awards and awards[0].get("value", {}).get("currency"):
+                            currency = awards[0]["value"]["currency"]
+                        elif tender.get("value", {}).get("currency"):
+                            currency = tender["value"]["currency"]
 
                         record = ProcurementRecord(
                             ocid=data.get("ocid"),
-                            title=tender.get("title") or first_award.get("title") or "Untitled",
-                            description=tender.get("description") or first_award.get("description"),
+                            title=tender.get("title") or (awards[0].get("title") if awards else "Untitled"),
+                            description=tender.get("description") or (awards[0].get("description") if awards else ""),
                             buyer_name=buyer_name or "Unknown",
                             amount=amount,
                             currency=currency,
-                            status=tender.get("status") or first_award.get("status") or "active",
+                            status=tender.get("status") or (awards[0].get("status") if awards else "active"),
                             category=tender.get("mainProcurementCategory"),
                             location=tender.get("deliveryLocations", [{}])[0].get("description") if tender.get("deliveryLocations") else None,
                             date_published=KnowledgeService._parse_date(data.get("date"))
@@ -183,3 +189,36 @@ class KnowledgeService:
     @staticmethod
     def get_stats(db: Session) -> Dict:
         return {"total_records": db.query(ProcurementRecord).count()}
+
+    @staticmethod
+    def sync_ocds_from_url(url: str) -> Dict[str, Any]:
+        """
+        Downloads OCDS data from a URL and ingests it.
+        Supports .jsonl.gz, .csv, and Excel.
+        """
+        # Create a unique filename based on the URL or extension
+        ext = ".jsonl.gz" if "jsonl.gz" in url.lower() else os.path.splitext(url.split('?')[0])[1].lower()
+        if not ext: ext = ".jsonl.gz" # Default for OCDS portal
+        
+        temp_dir = tempfile.gettempdir()
+        file_path = os.path.join(temp_dir, f"jabari_sync_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}")
+        
+        try:
+            print(f"Downloading OCDS data from {url}...")
+            response = requests.get(url, stream=True, timeout=300)
+            response.raise_for_status()
+            
+            with open(file_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk: f.write(chunk)
+            
+            print(f"Download complete: {file_path}")
+            result = KnowledgeService.ingest_ocds_file(file_path)
+            
+            # Cleanup temp file
+            if os.path.exists(file_path): os.remove(file_path)
+            
+            return result
+        except Exception as e:
+            if os.path.exists(file_path): os.remove(file_path)
+            return {"success": False, "error": str(e)}

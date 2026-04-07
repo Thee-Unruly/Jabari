@@ -89,14 +89,56 @@ const KnowledgeHub = () => {
         }
     };
 
+    const handleSync = async () => {
+        setIsUploading(true);
+        setUploadStatus({ state: 'loading', message: 'Syncing with OCDS Portal...' });
+        try {
+            const res = await axios.post(`${baseUrl}/knowledge/sync`);
+            setUploadStatus({ 
+                state: 'success', 
+                message: 'Live Sync Complete', 
+                details: `${res.data.indexed} new records indexed from the portal.` 
+            });
+            fetchStats();
+        } catch (err) {
+            setUploadStatus({ 
+                state: 'error', 
+                message: 'Sync Failed', 
+                details: err.response?.data?.detail || 'Could not connect to the OCDS data source.' 
+            });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     return (
         <div style={{ display: 'flex', height: '100%', background: T.cream, fontFamily: T.sans }}>
             
             {/* ── LEFT: SEARCH & FILTERS ── */}
             <aside style={{ width: '380px', borderRight: `0.5px solid ${T.border}`, padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', overflowY: 'auto' }}>
-                <div>
-                    <h1 style={{ fontFamily: T.serif, fontSize: '24px', fontStyle: 'italic', marginBottom: '4px' }}>Market Intelligence</h1>
-                    <p style={{ fontSize: '11px', color: T.faint, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jabari Knowledge Engine</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                        <h1 style={{ fontFamily: T.serif, fontSize: '24px', fontStyle: 'italic', marginBottom: '4px' }}>Market Intelligence</h1>
+                        <p style={{ fontSize: '11px', color: T.faint, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jabari Knowledge Engine</p>
+                    </div>
+                    <button 
+                        onClick={handleSync}
+                        disabled={isUploading}
+                        title="Sync Live Data"
+                        style={{ 
+                            background: T.surface, 
+                            border: `0.5px solid ${T.border}`, 
+                            borderRadius: '8px', 
+                            padding: '8px', 
+                            cursor: 'pointer',
+                            color: T.muted,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                        }}
+                    >
+                        <RefreshCw size={14} className={isUploading ? "animate-spin" : ""} />
+                    </button>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

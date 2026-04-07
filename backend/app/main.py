@@ -172,6 +172,25 @@ def knowledge_stats(db: Session = Depends(get_db)):
     """Returns summary stats about the knowledge base."""
     return KnowledgeService.get_stats(db)
 
+@app.post("/knowledge/sync")
+async def sync_knowledge_base():
+    """
+    Live sync with the OCDS portal.
+    Downloads the full data archive and updates the knowledge vault.
+    """
+    url = "https://data.open-contracting.org/en/publication/147/download?name=full.jsonl.gz"
+    # Run in background in a real app, but for now we'll wait for the small 40MB file
+    result = KnowledgeService.sync_ocds_from_url(url)
+    
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error", "Sync failed"))
+    
+    return {
+        "status": "success",
+        "indexed": result.get("indexed", 0),
+        "skipped": result.get("skipped", 0)
+    }
+
 @app.post("/knowledge/ingest")
 async def ingest_knowledge_base(file: UploadFile = File(...)):
     """
