@@ -39,10 +39,11 @@ const App = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
       try {
         const [sourceRes, tenderRes] = await Promise.all([
-          axios.get('http://127.0.0.1:8500/sources'),
-          axios.get('http://127.0.0.1:8500/tenders')
+          axios.get(`${baseUrl}/sources`),
+          axios.get(`${baseUrl}/tenders`)
         ]);
         setSources(sourceRes.data.map(d => ({ ...d, name: d.file_name })));
         setTenders(tenderRes.data);
@@ -55,8 +56,9 @@ const App = () => {
 
   const handleCreateTender = async () => {
     if (!newTenderName.trim()) return;
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
     try {
-      const res = await axios.post('http://127.0.0.1:8500/tenders', { name: newTenderName, description: 'Tender Project' });
+      const res = await axios.post(`${baseUrl}/tenders`, { name: newTenderName, description: 'Tender Project' });
       setTenders([res.data, ...tenders]);
       setActiveTenderId(res.data.id);
       setNewTenderName('');
@@ -74,8 +76,9 @@ const App = () => {
 
   const jumpToPage = (pageNum) => {
     const iframe = document.getElementById('pdf-viewer');
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
     if (iframe && activeDoc?.file_name) {
-      iframe.src = `http://127.0.0.1:8500/files/${encodeURIComponent(activeDoc.file_name)}#page=${pageNum}`;
+      iframe.src = `${baseUrl}/files/${encodeURIComponent(activeDoc.file_name)}#page=${pageNum}`;
     }
   };
 
@@ -322,7 +325,7 @@ const App = () => {
                           <FileText style={{ width: '14px', height: '14px', color: T.muted }} />
                           <span style={{ fontSize: '12px', fontWeight: 500, color: T.ink }}>{activeDoc.name}</span>
                         </div>
-                        <a href={`http://127.0.0.1:8500/files/${encodeURIComponent(activeDoc.file_name)}`} target="_blank" rel="noreferrer"
+                        <a href={`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/files/${encodeURIComponent(activeDoc.file_name)}`} target="_blank" rel="noreferrer"
                           style={{ fontSize: '11px', color: T.muted, letterSpacing: '0.06em', textTransform: 'uppercase', textDecoration: 'none' }}>
                           Raw Access
                         </a>
@@ -332,7 +335,7 @@ const App = () => {
                           {activeDoc.category === 'pdf' ? (
                             <iframe
                               id="pdf-viewer"
-                              src={`http://127.0.0.1:8500/files/${encodeURIComponent(activeDoc.file_name)}#toolbar=0&navpanes=0`}
+                              src={`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/files/${encodeURIComponent(activeDoc.file_name)}#toolbar=0&navpanes=0`}
                               style={{ width: '100%', height: '100%', border: 'none' }}
                               title="Vault Material"
                             />

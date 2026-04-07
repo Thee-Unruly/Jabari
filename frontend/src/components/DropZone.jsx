@@ -210,8 +210,9 @@ const DropZone = ({ onUploadSuccess, activeTenderId }) => {
       formData.append('tender_id', activeTenderId.toString());
     }
 
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
     try {
-      const response = await axios.post('http://127.0.0.1:8500/ingest', formData, {
+      const response = await axios.post(`${baseUrl}/ingest`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 60000,
         onUploadProgress: (progressEvent) => {

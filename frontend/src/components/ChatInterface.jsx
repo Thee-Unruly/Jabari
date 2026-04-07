@@ -39,12 +39,14 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
 
   useEffect(() => {
     if (sources.length === 0) {
-      axios.get('http://127.0.0.1:8500/sources')
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+      axios.get(`${baseUrl}/sources`)
         .then(res => setSources(res.data.map(d => ({ ...d, name: d.file_name }))))
         .catch(err => console.error('Source Fetch Error', err));
     }
     if (tenders.length === 0) {
-      axios.get('http://127.0.0.1:8500/tenders')
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+      axios.get(`${baseUrl}/tenders`)
         .then(res => setTenders(res.data))
         .catch(err => console.error('Tenders Fetch Error', err));
     }
@@ -81,8 +83,9 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [] }
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
     try {
-      const response = await axios.post('http://127.0.0.1:8500/chat', {
+      const response = await axios.post(`${baseUrl}/chat`, {
         message: input,
         document_id: groundedDocId,
         tender_id: groundedTenderId,

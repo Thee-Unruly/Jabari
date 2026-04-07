@@ -35,26 +35,44 @@ const DraftsView = ({ sources = [] }) => {
   const [draft, setDraft] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedTenderId, setSelectedTenderId] = useState(null);
+  const [tenders, setTenders] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showTenderDropdown, setShowTenderDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  const tenderDropdownRef = useRef(null);
 
-  const activeSourceName = sources.find(d => d.id === selectedDocId)?.name;
+  const filteredSources = sources.filter(d => selectedTenderId ? d.tender_id === selectedTenderId : true);
+  const activeSourceName = filteredSources.find(d => d.id === selectedDocId)?.name;
+  const activeTenderName = tenders.find(t => t.id === selectedTenderId)?.name;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target))
         setShowDropdown(false);
+      if (tenderDropdownRef.current && !tenderDropdownRef.current.contains(e.target))
+        setShowTenderDropdown(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (tenders.length === 0) {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+      axios.get(`${baseUrl}/tenders`)
+        .then(res => setTenders(res.data))
+        .catch(err => console.error('Tenders Fetch Error', err));
+    }
   }, []);
 
   const handleGenerate = async () => {
     if (!selectedDocId) return;
     setIsGenerating(true);
     setDraft(null);
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
     try {
-      const response = await axios.post('http://127.0.0.1:8500/draft', {
+      const response = await axios.post(`${baseUrl}/draft`, {
         document_id: selectedDocId,
         draft_type: draftType,
       });
@@ -76,9 +94,10 @@ const DraftsView = ({ sources = [] }) => {
   const handleExportDocx = async () => {
     if (!draft?.content || !draft?.title) return;
     setIsExporting(true);
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
     try {
       const response = await axios.post(
-        'http://127.0.0.1:8500/export/docx',
+        `${baseUrl}/export/docx`,
         { title: draft.title, content: draft.content },
         { responseType: 'blob' }
       );
@@ -140,12 +159,92 @@ const DraftsView = ({ sources = [] }) => {
           </h2>
         </div>
 
+        {/* Project Selector */}
+        <div style={{ position: 'relative', zIndex: showTenderDropdown ? 60 : 20, marginBottom: '-8px' }} ref={tenderDropdownRef}>
+          <span style={eyebrow}>Workspace Scope</span>
+          <button
+            onClick={() => { setShowTenderDropdown(p => !p); setShowDropdown(false); }}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', padding: '10px 14px',
+              border: `0.5px solid ${showTenderDropdown ? T.ink : T.border}`,
+              borderRadius: '6px', background: T.surface,
+              color: T.ink,
+              fontSize: '13px', cursor: 'pointer', fontFamily: T.sans,
+              textAlign: 'left', transition: 'border-color 0.15s',
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
+              {activeTenderName ?? 'Universal Vault'}
+            </span>
+            <ChevronDown style={{
+              width: '14px', height: '14px', color: T.muted, flexShrink: 0,
+              transform: showTenderDropdown ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s',
+            }} />
+          </button>
+
+          {showTenderDropdown && (
+            <div style={{
+              position: 'absolute', left: 0, right: 0,
+              top: 'calc(100% + 4px)', zIndex: 70,
+              background: T.cream, border: `0.5px solid ${T.border}`,
+              borderRadius: '6px',
+              boxShadow: '0 8px 32px rgba(26,26,26,0.12)',
+              overflow: 'hidden',
+            }}>
+              <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                <button
+                  onClick={() => { setSelectedTenderId(null); setSelectedDocId(null); setShowTenderDropdown(false); }}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center',
+                    justifyContent: 'space-between', padding: '11px 14px',
+                    border: 'none', borderBottom: `0.5px solid ${T.border2}`,
+                    background: selectedTenderId === null ? T.surface2 : 'transparent',
+                    color: selectedTenderId === null ? T.ink : T.ink2,
+                    fontSize: '13px', fontWeight: selectedTenderId === null ? 500 : 400,
+                    cursor: 'pointer', textAlign: 'left', fontFamily: T.sans,
+                  }}
+                  onMouseOver={e => { if (selectedTenderId !== null) e.currentTarget.style.background = T.surface; }}
+                  onMouseOut={e => { if (selectedTenderId !== null) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  Universal Vault
+                  {selectedTenderId === null && <Check style={{ width: '13px', height: '13px', flexShrink: 0, color: T.ink }} />}
+                </button>
+
+                {tenders.map((tender, i) => (
+                  <button
+                    key={tender.id}
+                    onClick={() => { setSelectedTenderId(tender.id); setSelectedDocId(null); setShowTenderDropdown(false); }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center',
+                      justifyContent: 'space-between', padding: '11px 14px',
+                      border: 'none', borderBottom: i < tenders.length - 1 ? `0.5px solid ${T.border2}` : 'none',
+                      background: selectedTenderId === tender.id ? T.surface2 : 'transparent',
+                      color: selectedTenderId === tender.id ? T.ink : T.ink2,
+                      fontSize: '13px', fontWeight: selectedTenderId === tender.id ? 500 : 400,
+                      cursor: 'pointer', textAlign: 'left', fontFamily: T.sans,
+                    }}
+                    onMouseOver={e => { if (selectedTenderId !== tender.id) e.currentTarget.style.background = T.surface; }}
+                    onMouseOut={e => { if (selectedTenderId !== tender.id) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
+                      {tender.name}
+                    </span>
+                    {selectedTenderId === tender.id && <Check style={{ width: '13px', height: '13px', flexShrink: 0, color: T.ink }} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Source selector */}
         <div style={{ position: 'relative', zIndex: showDropdown ? 50 : 10 }} ref={dropdownRef}>
           <span style={eyebrow}>Source Material</span>
 
           <button
-            onClick={() => setShowDropdown(p => !p)}
+            onClick={() => { setShowDropdown(p => !p); setShowTenderDropdown(false); }}
             style={{
               width: '100%', display: 'flex', alignItems: 'center',
               justifyContent: 'space-between', padding: '10px 14px',
@@ -177,19 +276,19 @@ const DraftsView = ({ sources = [] }) => {
               overflow: 'hidden',
             }}>
               <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
-                {sources.length === 0 && (
+                {filteredSources.length === 0 && (
                   <div style={{ padding: '14px 16px', fontSize: '11px', color: T.faint, textAlign: 'center', fontStyle: 'italic' }}>
-                    No vaulted sources available
+                    No vaulted sources in this scope
                   </div>
                 )}
-                {sources.map((doc, i) => (
+                {filteredSources.map((doc, i) => (
                   <button
-                    key={doc.id}
+                    key={`doc-${doc.id}`}
                     onClick={() => { setSelectedDocId(doc.id); setShowDropdown(false); }}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center',
                       justifyContent: 'space-between', padding: '11px 14px',
-                      border: 'none', borderBottom: i < sources.length - 1 ? `0.5px solid ${T.border2}` : 'none',
+                      border: 'none', borderBottom: i < filteredSources.length - 1 ? `0.5px solid ${T.border2}` : 'none',
                       background: selectedDocId === doc.id ? T.surface2 : 'transparent',
                       color: selectedDocId === doc.id ? T.ink : T.ink2,
                       fontSize: '13px', fontWeight: selectedDocId === doc.id ? 500 : 400,
