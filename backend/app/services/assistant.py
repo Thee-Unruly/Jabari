@@ -27,32 +27,29 @@ class JabariAssistant:
         # 1. Vectorize the User Question
         question_vector = VectorStoreService.embed_text(question)
 
-        # 2. Semantic Search in Postgres
-        # We search for the top 5 most relevant chunks
+        # 2. Semantic Search in Postgres (Vault)
         query = db.query(DocumentChunk, Document).join(Document)
-        
         if document_id:
             query = query.filter(DocumentChunk.document_id == document_id)
         elif tender_id:
             query = query.filter(Document.tender_id == tender_id)
-            
-        # Use pgvector's <-> operator for L2 distance (lowest distance = most similar)
-        # Note: We use order_by(DocumentChunk.embedding.l2_distance(question_vector))
+
         chunks = query.order_by(DocumentChunk.embedding.l2_distance(question_vector)).limit(5).all()
 
-        if not chunks:
-            return {"answer": "I couldn't find any relevant information in your vaulted documents.", "citations": []}
-
         # 3. Supplemental Grounding: Search Market Intelligence (OCDS)
-        # If the user asks about price, awards, or benchmarks
         benchmarks = []
-        market_keywords = ["price", "cost", "award", "benchmark", "historical", "market", "tender", "vendor", "agency", "buyer"]
+        market_keywords = ["price", "cost", "award", "benchmark", "historical", "market", "tender", "vendor", "agency", "buyer", "who", "won", "winning"]
         if any(keyword in question.lower() for keyword in market_keywords):
-            benchmarks = KnowledgeService.get_benchmarks(question[:100], db) # Increased prefix length for better search
-        
+            benchmarks = KnowledgeService.get_benchmarks(question[:100], db)
+
+        if not chunks and not benchmarks:
+            return {"answer": "I couldn't find any relevant information in either your private vault or the historical market archives.", "citations": []}
+
         # 4. Construct the Grounded Context
         context_blocks = []
         citations = []
+        
+        # Add Vault context if available
         for chunk, doc in chunks:
             context_blocks.append(f"SOURCE: {doc.filename}\nCONTENT: {chunk.content}")
             citations.append({
@@ -61,8 +58,9 @@ class JabariAssistant:
                 "snippet": chunk.content[:100] + "..."
             })
         
+        # Add Market context if available
         if benchmarks:
-            benchmark_text = "\n".join([f"- Awarded to unknown at {b['amount']} {b['currency']} for '{b['title']}' on {b['date']}" for b in benchmarks])
+            benchmark_text = "\n".join([f"- Awarded to {b['buyer']} at {b['amount']} {b['currency']} for '{b['title']}' (Status: {b.get('status', 'Awarded')})" for b in benchmarks])
             context_blocks.append(f"SOURCE: HISTORICAL MARKET INTELLIGENCE (OCDS)\nCONTENT: {benchmark_text}")
 
         full_context = "\n\n---\n\n".join(context_blocks)
