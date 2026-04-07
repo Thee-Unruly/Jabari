@@ -199,6 +199,16 @@ async def reset_knowledge_base():
         raise HTTPException(status_code=500, detail=result.get("error"))
     return {"status": "success", "message": result.get("message")}
 
+@app.get("/knowledge/insights")
+async def get_knowledge_insights(db: Session = Depends(get_db)):
+    """Macro-level market data analytics."""
+    return KnowledgeService.get_insights(db)
+
+@app.get("/knowledge/stats")
+async def get_knowledge_stats(db: Session = Depends(get_db)):
+    """Fast record counting."""
+    return KnowledgeService.get_stats(db)
+
 @app.post("/knowledge/ingest")
 async def ingest_knowledge_base(file: UploadFile = File(...)):
     """

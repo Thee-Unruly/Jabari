@@ -4,6 +4,7 @@ import gzip
 from datetime import datetime
 from typing import Any, List, Dict, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.db import ProcurementRecord, SessionLocal
 
 import requests
@@ -213,6 +214,46 @@ class KnowledgeService:
     @staticmethod
     def get_stats(db: Session) -> Dict:
         return {"total_records": db.query(ProcurementRecord).count()}
+
+    @staticmethod
+    def get_insights(db: Session) -> Dict:
+        """
+        Calculates macro-level market intelligence from the OCDS database.
+        """
+        # 1. Macro Stats
+        stats = db.query(
+            func.count(ProcurementRecord.id).label("total_count"),
+            func.sum(ProcurementRecord.amount).label("total_value"),
+            func.avg(ProcurementRecord.amount).label("avg_value")
+        ).first()
+
+        # 2. Top Buyers (Leaderboard)
+        top_buyers = db.query(
+            ProcurementRecord.buyer_name,
+            func.count(ProcurementRecord.id).label("count"),
+            func.sum(ProcurementRecord.amount).label("value")
+        ).group_by(ProcurementRecord.buyer_name).order_by(func.count(ProcurementRecord.id).desc()).limit(5).all()
+
+        # 3. Category Breakdown (Market Share)
+        top_categories = db.query(
+            ProcurementRecord.category,
+            func.count(ProcurementRecord.id).label("count"),
+            func.sum(ProcurementRecord.amount).label("value")
+        ).filter(ProcurementRecord.category != None).group_by(ProcurementRecord.category).order_by(func.count(ProcurementRecord.id).desc()).limit(5).all()
+
+        return {
+            "summary": {
+                "total_records": stats.total_count or 0,
+                "total_value": float(stats.total_value or 0),
+                "avg_value": float(stats.avg_value or 0)
+            },
+            "leaderboard": [
+                {"name": b[0], "count": b[1], "value": float(b[2] or 0)} for b in top_buyers
+            ],
+            "sectors": [
+                {"category": c[0], "count": c[1], "value": float(c[2] or 0)} for c in top_categories
+            ]
+        }
 
     @staticmethod
     def sync_ocds_from_url(url: str) -> Dict[str, Any]:

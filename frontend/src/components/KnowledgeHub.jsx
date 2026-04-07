@@ -18,6 +18,7 @@ const T = {
   surface: 'rgba(26,26,26,0.03)',
   surface2: 'rgba(26,26,26,0.06)',
   accent: '#B8860B', // Dark Goldenrod
+  success: '#10b981',
   serif: "'Lora', Georgia, serif",
   sans: "'DM Sans', system-ui, sans-serif",
 };
@@ -27,6 +28,7 @@ const KnowledgeHub = () => {
     const [results, setResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
     const [stats, setStats] = useState({ total_records: 0 });
+    const [insights, setInsights] = useState(null);
     const [uploadStatus, setUploadStatus] = useState({ state: 'idle', message: '', details: null });
     const [isUploading, setIsUploading] = useState(false);
 
@@ -34,10 +36,14 @@ const KnowledgeHub = () => {
 
     const fetchStats = async () => {
         try {
-            const res = await axios.get(`${baseUrl}/knowledge/stats`);
-            setStats(res.data);
+            const [sRes, iRes] = await Promise.all([
+                axios.get(`${baseUrl}/knowledge/stats`),
+                axios.get(`${baseUrl}/knowledge/insights`)
+            ]);
+            setStats(sRes.data);
+            setInsights(iRes.data);
         } catch (err) {
-            console.error('Failed to fetch stats', err);
+            console.error('Failed to fetch intelligence stats', err);
         }
     };
 
@@ -46,7 +52,7 @@ const KnowledgeHub = () => {
     }, []);
 
     const handleSearch = async () => {
-        if (!query.trim()) return;
+        if (!query.trim()) { setResults([]); return; }
         setIsSearching(true);
         try {
             const res = await axios.get(`${baseUrl}/knowledge/search?q=${encodeURIComponent(query)}`);
@@ -61,29 +67,18 @@ const KnowledgeHub = () => {
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         setIsUploading(true);
         setUploadStatus({ state: 'loading', message: `Ingesting ${file.name}...` });
-
         const formData = new FormData();
         formData.append('file', file);
-
         try {
             const res = await axios.post(`${baseUrl}/knowledge/ingest`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            setUploadStatus({ 
-                state: 'success', 
-                message: 'Ingestion Complete', 
-                details: `${res.data.indexed} records added to the knowledge vault.` 
-            });
+            setUploadStatus({ state: 'success', message: 'Ingestion Complete', details: `${res.data.indexed} records indexed.` });
             fetchStats();
         } catch (err) {
-            setUploadStatus({ 
-                state: 'error', 
-                message: 'Ingestion Failed', 
-                details: err.response?.data?.detail || 'An unexpected error occurred during processing.' 
-            });
+            setUploadStatus({ state: 'error', message: 'Ingestion Failed', details: err.response?.data?.detail || 'Error' });
         } finally {
             setIsUploading(false);
         }
@@ -91,37 +86,13 @@ const KnowledgeHub = () => {
 
     const handleSync = async () => {
         setIsUploading(true);
-        setUploadStatus({ state: 'loading', message: 'Syncing with OCDS Portal...' });
+        setUploadStatus({ state: 'loading', message: 'Syncing OCDS Portal...' });
         try {
             const res = await axios.post(`${baseUrl}/knowledge/sync`);
-            setUploadStatus({ 
-                state: 'success', 
-                message: 'Live Sync Complete', 
-                details: `${res.data.indexed} new records indexed from the portal.` 
-            });
+            setUploadStatus({ state: 'success', message: 'Sync Complete', details: `${res.data.indexed} records synchronized.` });
             fetchStats();
         } catch (err) {
-            setUploadStatus({ 
-                state: 'error', 
-                message: 'Sync Failed', 
-                details: err.response?.data?.detail || 'Could not connect to the OCDS data source.' 
-            });
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    const handleReset = async () => {
-        if (!window.confirm('⚠️ This will permanently delete ALL market records. Are you sure?')) return;
-        setIsUploading(true);
-        setUploadStatus({ state: 'loading', message: 'Clearing database...' });
-        try {
-            await axios.post(`${baseUrl}/knowledge/reset`);
-            setUploadStatus({ state: 'success', message: 'Database Cleared', details: 'All records removed. Ready for fresh ingestion.' });
-            setResults([]);
-            fetchStats();
-        } catch (err) {
-            setUploadStatus({ state: 'error', message: 'Reset Failed', details: err.response?.data?.detail || 'Unknown error' });
+            setUploadStatus({ state: 'error', message: 'Sync Failed', details: 'Endpoint error' });
         } finally {
             setIsUploading(false);
         }
@@ -130,217 +101,148 @@ const KnowledgeHub = () => {
     return (
         <div style={{ display: 'flex', height: '100%', background: T.cream, fontFamily: T.sans }}>
             
-            {/* ── LEFT: SEARCH & FILTERS ── */}
+            {/* ── LEFT SIDEBAR ── */}
             <aside style={{ width: '380px', borderRight: `0.5px solid ${T.border}`, padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', overflowY: 'auto' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <h1 style={{ fontFamily: T.serif, fontSize: '24px', fontStyle: 'italic', marginBottom: '4px' }}>Market Intelligence</h1>
-                        <p style={{ fontSize: '11px', color: T.faint, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jabari Knowledge Engine</p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                        <button 
-                            onClick={handleSync}
-                            disabled={isUploading}
-                            title="Sync Live Data"
-                            style={{ 
-                                background: T.surface, 
-                                border: `0.5px solid ${T.border}`, 
-                                borderRadius: '8px', 
-                                padding: '8px', 
-                                cursor: 'pointer',
-                                color: T.muted,
-                                display: 'flex',
-                                alignItems: 'center',
-                            }}
-                        >
-                            <RefreshCw size={14} className={isUploading ? "animate-spin" : ""} />
-                        </button>
-                        <button 
-                            onClick={handleReset}
-                            disabled={isUploading}
-                            title="Reset Database"
-                            style={{ 
-                                background: T.surface, 
-                                border: `0.5px solid ${T.border}`, 
-                                borderRadius: '8px', 
-                                padding: '8px', 
-                                cursor: 'pointer',
-                                color: '#c0392b',
-                                display: 'flex',
-                                alignItems: 'center',
-                            }}
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    </div>
+                <div>
+                    <h1 style={{ fontFamily: T.serif, fontSize: '24px', fontStyle: 'italic', marginBottom: '4px' }}>Market Intelligence</h1>
+                    <p style={{ fontSize: '11px', color: T.faint, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jabari Knowledge Engine</p>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ position: 'relative' }}>
-                        <input 
-                            value={query}
-                            onChange={e => setQuery(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                            placeholder="Search tender benchmarks..."
-                            style={{ 
-                                width: '100%', 
-                                padding: '12px 40px 12px 14px', 
-                                border: `0.5px solid ${T.border}`, 
-                                borderRadius: '8px', 
-                                background: '#fff', 
-                                fontSize: '13px', 
-                                color: T.ink,
-                                outline: 'none'
-                            }}
-                        />
-                        <button 
-                            onClick={handleSearch}
-                            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.muted }}
-                        >
-                            {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-                        </button>
-                    </div>
+                <div style={{ position: 'relative' }}>
+                    <input 
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                        placeholder="Search benchmarks..."
+                        style={{ width: '100%', padding: '12px 40px 12px 14px', border: `0.5px solid ${T.border}`, borderRadius: '8px', background: '#fff', fontSize: '13px', outline: 'none' }}
+                    />
+                    <button onClick={handleSearch} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.muted }}>
+                        {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                    </button>
+                    {results.length > 0 && <button onClick={() => {setQuery(''); setResults([]);}} style={{ fontSize: '10px', marginTop: '8px', color: T.accent, background: 'none', border: 'none', cursor: 'pointer' }}>Clear Results</button>}
                 </div>
 
-                <div style={{ padding: '1.5rem', borderRadius: '12px', background: '#fff', border: `0.5px solid ${T.border}`, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 600, color: T.faint, textTransform: 'uppercase' }}>Database Status</span>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></div>
+                <div style={{ padding: '1.5rem', borderRadius: '12px', background: '#fff', border: `0.5px solid ${T.border}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 600, color: T.faint }}>LIVE REPOSITORY</span>
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: T.success }}></div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                         <h2 style={{ fontSize: '32px', fontWeight: 600, margin: 0 }}>{stats.total_records.toLocaleString()}</h2>
-                        <span style={{ fontSize: '12px', color: T.muted }}>Verified Records</span>
-                    </div>
-                    <div style={{ height: '4px', background: T.surface, borderRadius: '2px', overflow: 'hidden' }}>
-                        <div style={{ width: '70%', height: '100%', background: T.accent }}></div>
+                        <span style={{ fontSize: '12px', color: T.muted }}>Tenders Indexed</span>
                     </div>
                 </div>
 
-                {/* UPLOAD PANEL */}
-                <div style={{ padding: '1.5rem', borderRadius: '12px', background: T.surface, border: `0.5px dashed ${T.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                        <Upload size={14} style={{ color: T.muted }} />
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: T.ink, textTransform: 'uppercase' }}>Ingest OCDS Data</span>
+                <div style={{ padding: '1.5rem', borderRadius: '12px', background: T.surface, border: `0.5px dashed ${T.border}`, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <RefreshCw size={14} className={isUploading ? "animate-spin" : ""} />
+                        <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' }}>Ingestion Pipeline</span>
                     </div>
-                    
-                    <label style={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        gap: '8px', 
-                        padding: '1.5rem', 
-                        border: `1px dashed ${T.border}`, 
-                        borderRadius: '8px', 
-                        cursor: isUploading ? 'not-allowed' : 'pointer',
-                        opacity: isUploading ? 0.6 : 1,
-                        background: '#fff'
-                    }}>
-                        <Database size={24} style={{ color: T.faint }} />
-                        <div style={{ textAlign: 'center' }}>
-                            <p style={{ fontSize: '12px', fontWeight: 500, margin: 0 }}>Click to upload</p>
-                            <p style={{ fontSize: '10px', color: T.faint, margin: '2px 0 0' }}>JSONL.GZ, CSV, or XLSX</p>
-                        </div>
-                        <input type="file" style={{ display: 'none' }} onChange={handleFileUpload} disabled={isUploading} />
-                    </label>
-
-                    {uploadStatus.state !== 'idle' && (
-                        <div style={{ marginTop: '1rem', padding: '10px', borderRadius: '6px', background: uploadStatus.state === 'error' ? '#fef2f2' : '#f0fdf4', border: `0.5px solid ${uploadStatus.state === 'error' ? '#fee2e2' : '#dcfce7'}` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                {uploadStatus.state === 'loading' ? <RefreshCw size={14} className="animate-spin" /> : 
-                                 uploadStatus.state === 'success' ? <CheckCircle2 size={14} color="#10b981" /> : <AlertCircle size={14} color="#ef4444" />}
-                                <span style={{ fontSize: '11px', fontWeight: 600, color: T.ink }}>{uploadStatus.message}</span>
-                            </div>
-                            {uploadStatus.details && <p style={{ fontSize: '10px', color: T.muted, margin: 0 }}>{uploadStatus.details}</p>}
-                        </div>
-                    )}
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button onClick={handleSync} disabled={isUploading} style={{ flex: 1, padding: '10px', background: T.ink, color: '#fff', borderRadius: '8px', fontSize: '11px', fontWeight: 600, border: 'none', cursor: 'pointer' }}>Portal Sync</button>
+                        <label style={{ flex: 1, padding: '10px', border: `0.5px solid ${T.border}`, background: '#fff', borderRadius: '8px', fontSize: '11px', fontWeight: 600, textAlign: 'center', cursor: 'pointer' }}>
+                            Upload <input type="file" style={{ display: 'none' }} onChange={handleFileUpload} />
+                        </label>
+                    </div>
                 </div>
 
-                <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '8px', color: T.faint }}>
-                    <ShieldCheck size={14} />
-                    <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Secured Intelligence Layer</span>
-                </div>
+                {uploadStatus.state !== 'idle' && (
+                    <div style={{ padding: '12px', borderRadius: '8px', background: uploadStatus.state === 'success' ? '#f0fdf4' : '#fef2f2', border: `0.5px solid ${T.border}` }}>
+                        <p style={{ fontSize: '12px', fontWeight: 600, margin: '0 0 4px 0' }}>{uploadStatus.message}</p>
+                        <p style={{ fontSize: '10px', color: T.muted, margin: 0 }}>{uploadStatus.details}</p>
+                    </div>
+                )}
             </aside>
 
-            {/* ── RIGHT: RESULTS FEED ── */}
-            <main style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
-                {!results.length && !isSearching ? (
-                    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.15 }}>
-                        <Globe size={84} style={{ marginBottom: '1.5rem' }} />
-                        <h2 style={{ fontFamily: T.serif, fontSize: '32px', fontStyle: 'italic', fontWeight: 400 }}>Awaiting Query</h2>
-                        <p style={{ fontSize: '14px', maxWidth: '300px', textAlign: 'center', lineHeight: 1.6 }}>Scan the historical procurement landscape of Kenya to discover pricing benchmarks.</p>
-                    </div>
-                ) : (
-                    <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2.5rem' }}>
-                            <div>
-                                <h2 style={{ fontFamily: T.serif, fontSize: '32px', fontStyle: 'italic', fontWeight: 400, color: T.ink, marginBottom: '4px' }}>
-                                    Market Findings
-                                </h2>
-                                <p style={{ fontSize: '12px', color: T.faint }}>Located {results.length} relevant historical archives</p>
+            {/* ── MAIN CONTENT: INSIGHTS or SEARCH RESULTS ── */}
+            <main style={{ flex: 1, padding: '3rem', overflowY: 'auto' }}>
+                {results.length === 0 && !isSearching ? (
+                    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+                        <div style={{ marginBottom: '3rem' }}>
+                            <h2 style={{ fontFamily: T.serif, fontSize: '36px', fontStyle: 'italic', marginBottom: '8px' }}>Market Command Center</h2>
+                            <p style={{ color: T.muted, fontSize: '15px' }}>Aggregate strategic intelligence across the historical procurement landscape.</p>
+                        </div>
+
+                        {/* Summary Cards */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
+                            <div style={{ padding: '1.5rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '12px' }}>
+                                <p style={{ fontSize: '10px', fontWeight: 600, color: T.faint, textTransform: 'uppercase', marginBottom: '1rem' }}>Total Market Exposure</p>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                                    <span style={{ fontSize: '12px', color: T.muted }}>KSh</span>
+                                    <h3 style={{ fontSize: '28px', fontWeight: 600, margin: 0 }}>{((insights?.summary?.total_value || 0) / 1e9).toFixed(1)}B</h3>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <div style={{ padding: '8px 16px', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '20px', fontSize: '11px', fontWeight: 500 }}>
-                                    Sort: Recency
+                            <div style={{ padding: '1.5rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '12px' }}>
+                                <p style={{ fontSize: '10px', fontWeight: 600, color: T.faint, textTransform: 'uppercase', marginBottom: '1rem' }}>Identified Benchmarks</p>
+                                <h3 style={{ fontSize: '28px', fontWeight: 600, margin: 0 }}>{(insights?.summary?.total_records || 0).toLocaleString()}</h3>
+                            </div>
+                            <div style={{ padding: '1.5rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '12px' }}>
+                                <p style={{ fontSize: '10px', fontWeight: 600, color: T.faint, textTransform: 'uppercase', marginBottom: '1rem' }}>Avg Award Value</p>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                                    <span style={{ fontSize: '12px', color: T.muted }}>KSh</span>
+                                    <h3 style={{ fontSize: '28px', fontWeight: 600, margin: 0 }}>{((insights?.summary?.avg_value || 0) / 1e6).toFixed(1)}M</h3>
                                 </div>
                             </div>
                         </div>
 
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
+                            {/* Leaderboard */}
+                            <div style={{ padding: '2rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '16px' }}>
+                                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <TrendingUp size={16} color={T.accent} /> Top Procuring Agencies
+                                </h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                    {insights?.leaderboard.map((b, i) => (
+                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '13px', fontWeight: 500 }}>{b.name}</span>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <span style={{ fontSize: '12px', fontWeight: 600 }}>{b.count} Tenders</span>
+                                                <p style={{ fontSize: '10px', color: T.faint, margin: 0 }}>KSh {(b.value / 1e6).toFixed(1)}M</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Sectors */}
+                            <div style={{ padding: '2rem', background: T.ink, borderRadius: '16px', color: '#fff' }}>
+                                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '1.5rem' }}>Market Share by Sector</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    {insights?.sectors.map((s, i) => (
+                                        <div key={i}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '6px' }}>
+                                                <span>{s.category || 'General'}</span>
+                                                <span style={{ color: T.accent }}>{(s.value / (insights.summary.total_value || 1) * 100).toFixed(0)}%</span>
+                                            </div>
+                                            <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px' }}>
+                                                <div style={{ width: `${(s.value / (insights.summary.total_value || 1) * 100)}%`, height: '100%', background: T.accent }}></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+                        <h2 style={{ fontFamily: T.serif, fontSize: '32px', marginBottom: '2.5rem' }}>Market Findings ({results.length})</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             {results.map((r, i) => (
-                                <div key={i} style={{ 
-                                    padding: '2rem', 
-                                    background: '#fff', 
-                                    border: `0.5px solid ${T.border}`, 
-                                    borderRadius: '16px', 
-                                    display: 'flex', 
-                                    flexDirection: 'column', 
-                                    gap: '1.5rem',
-                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    cursor: 'pointer',
-                                    position: 'relative',
-                                    overflow: 'hidden'
-                                }} onMouseOver={e => {
-                                    e.currentTarget.style.transform = 'translateY(-4px)';
-                                    e.currentTarget.style.boxShadow = '0 12px 24px -10px rgba(0,0,0,0.05)';
-                                    e.currentTarget.style.borderColor = T.accent;
-                                }} onMouseOut={e => {
-                                    e.currentTarget.style.transform = 'none';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                    e.currentTarget.style.borderColor = T.border;
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div key={i} style={{ padding: '2rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '16px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                                <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', background: T.surface, color: T.muted, borderRadius: '4px', textTransform: 'uppercase' }}>
-                                                    {r.status || 'Awarded'}
-                                                </span>
-                                                <span style={{ fontSize: '10px', color: T.faint }}>{r.ocid}</span>
-                                            </div>
-                                            <h3 style={{ fontSize: '20px', fontFamily: T.serif, fontWeight: 500, color: T.ink, margin: 0, lineHeight: 1.3 }}>
-                                                {r.title}
-                                            </h3>
-                                            <p style={{ fontSize: '13px', color: T.muted, margin: '8px 0 0' }}>{r.buyer}</p>
+                                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', background: T.surface, color: T.muted, borderRadius: '4px', textTransform: 'uppercase' }}>{r.status || 'Awarded'}</span>
+                                            <h3 style={{ fontSize: '18px', fontFamily: T.serif, margin: '8px 0 4px' }}>{r.title}</h3>
+                                            <p style={{ fontSize: '13px', color: T.muted }}>{r.buyer}</p>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <p style={{ fontSize: '24px', fontWeight: 600, color: T.ink, margin: 0 }}>
-                                                {r.currency} {r.amount.toLocaleString()}
-                                            </p>
-                                            <p style={{ fontSize: '11px', color: T.faint, margin: '4px 0 0' }}>
-                                                {r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Date Unknown'}
-                                            </p>
+                                            <p style={{ fontSize: '20px', fontWeight: 600 }}>{r.currency} {r.amount.toLocaleString()}</p>
+                                            <p style={{ fontSize: '11px', color: T.faint }}>OCID: {r.ocid}</p>
                                         </div>
                                     </div>
-                                    
-                                    <div style={{ display: 'flex', gap: '2rem', borderTop: `0.5px solid ${T.border}`, paddingTop: '1.25rem', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: T.muted }}>
-                                            <MapPin size={14} strokeWidth={1.5} /> {r.location || 'Kenya Nationwide'}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: T.muted }}>
-                                            <Database size={14} strokeWidth={1.5} /> {r.category || 'General Procurement'}
-                                        </div>
-                                        <button style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: T.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                                            View Details <ExternalLink size={14} />
-                                        </button>
+                                    <div style={{ display: 'flex', gap: '1.5rem', borderTop: `0.5px solid ${T.border}`, paddingTop: '1rem', fontSize: '12px', color: T.muted }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={14} /> {r.location || 'Nationwide'}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Database size={14} /> {r.category || 'General'}</div>
                                     </div>
                                 </div>
                             ))}
@@ -354,8 +256,7 @@ const KnowledgeHub = () => {
                 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
                 ::-webkit-scrollbar { width: 6px; }
                 ::-webkit-scrollbar-track { background: transparent; }
-                ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.05); borderRadius: 10px; }
-                ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.1); }
+                ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); borderRadius: 10px; }
             `}</style>
         </div>
     );
