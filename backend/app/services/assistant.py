@@ -1,8 +1,9 @@
 from __future__ import annotations
 import os
 from sqlalchemy.orm import Session
-from app.db import DocumentChunk, Document
+from app.db import DocumentChunk, Document, ProcurementRecord
 from app.services.vector_store import VectorStoreService
+from app.services.knowledge import KnowledgeService
 from groq import Groq
 import json
 
@@ -42,7 +43,13 @@ class JabariAssistant:
         if not chunks:
             return {"answer": "I couldn't find any relevant information in your vaulted documents.", "citations": []}
 
-        # 3. Construct the Grounded Context
+        # 3. Supplemental Grounding: Search Market Intelligence (OCDS)
+        # If the user asks about price, awards, or benchmarks
+        benchmarks = []
+        if any(keyword in question.lower() for keyword in ["price", "cost", "award", "benchmark", "historical", "market"]):
+            benchmarks = KnowledgeService.get_benchmarks(question[:50], db) # Simple prefix search
+        
+        # 4. Construct the Grounded Context
         context_blocks = []
         citations = []
         for chunk, doc in chunks:
@@ -52,18 +59,24 @@ class JabariAssistant:
                 "filename": doc.filename,
                 "snippet": chunk.content[:100] + "..."
             })
+        
+        if benchmarks:
+            benchmark_text = "\n".join([f"- Awarded to unknown at {b['amount']} {b['currency']} for '{b['title']}' on {b['date']}" for b in benchmarks])
+            context_blocks.append(f"SOURCE: HISTORICAL MARKET INTELLIGENCE (OCDS)\nCONTENT: {benchmark_text}")
 
         full_context = "\n\n---\n\n".join(context_blocks)
 
-        # 4. Invoke LLM with Grounding
+        # 5. Invoke LLM with Grounding
         prompt = f"""
         You are Jabari AI, an Executive Bidding Assistant. Your goal is to provide authoritative, 
-        concise answers based ONLY on the provided document context.
+        concise answers grounded in both the user's private vault and the historical market intelligence base.
+        
+        Note: Items labeled 'HISTORICAL MARKET INTELLIGENCE' are benchmark data from Kenya's procurement portal.
         
         If the answer isn't in the context, state that you don't know based on the vault content.
         Always maintain a professional, monochromatic 'Executive intelligence' tone.
         
-        CONTEXT FROM VAULT:
+        CONTEXT:
         {full_context}
         
         QUESTION:

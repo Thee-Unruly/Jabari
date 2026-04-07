@@ -15,7 +15,8 @@ from app.services.vector_store import VectorStoreService
 from app.services.assistant import JabariAssistant
 from app.services.drafter import JabariDrafter
 from app.services.exporter import ExportEngine
-from app.db import SessionLocal, init_db, Document, DocumentChunk, Tender
+from app.services.knowledge import KnowledgeService
+from app.db import SessionLocal, init_db, Document, DocumentChunk, Tender, ProcurementRecord
 from fastapi.responses import StreamingResponse
 
 # Initialize components
@@ -157,6 +158,42 @@ async def export_draft_docx(request: ExportRequest):
         headers=headers,
         media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     )
+
+@app.get("/knowledge/search")
+def search_benchmarks(q: str, db: Session = Depends(get_db)):
+    """
+    Jabari Knowledge: Market Intelligence Search.
+    Finds historical tender awards and pricing benchmarks.
+    """
+    return KnowledgeService.get_benchmarks(q, db)
+
+@app.get("/knowledge/stats")
+def knowledge_stats(db: Session = Depends(get_db)):
+    """Returns summary stats about the knowledge base."""
+    return KnowledgeService.get_stats(db)
+
+@app.post("/knowledge/ingest")
+async def ingest_knowledge_base(file: UploadFile = File(...)):
+    """
+    Direct ingestion of OCDS CSV or Excel dumps into the Knowledge Vault.
+    Supports: .csv, .xlsx, .xls from Kenya's OCDS data portal.
+    """
+    file_path = os.path.join(UPLOAD_DIR, f"knowledge_{file.filename}")
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    result = KnowledgeService.ingest_ocds_file(file_path)
+    
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error", "Ingestion failed"))
+    
+    return {
+        "status": "success",
+        "file": file.filename,
+        "indexed": result.get("indexed", 0),
+        "skipped": result.get("skipped", 0),
+    }
+
 
 @app.get("/")
 async def health_check():

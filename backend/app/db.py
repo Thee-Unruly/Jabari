@@ -67,6 +67,29 @@ class DocumentChunk(Base):
 
     document = relationship("Document", back_populates="chunks")
 
+class ProcurementRecord(Base):
+    """
+    Jabari Knowledge: Historical tender data from OCDS.
+    Used for pricing benchmarks and market intelligence.
+    """
+    __tablename__ = "procurement_knowledge"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ocid = Column(String, index=True) # Open Contracting ID
+    title = Column(String, index=True)
+    description = Column(Text)
+    buyer_name = Column(String, index=True)
+    amount = Column(Float)
+    currency = Column(String, default="KES")
+    status = Column(String)
+    category = Column(String, nullable=True)   # procurement category
+    location = Column(String, nullable=True)   # delivery location / region
+    date_published = Column(DateTime)
+    
+    # Optional semantic vector for finding "similar" past tenders
+    embedding = Column(Vector(EMBEDDING_SIZE), nullable=True) 
+
+
 def init_db():
     # Attempt to create extension if it's a Vector-enabled DB
     try:
