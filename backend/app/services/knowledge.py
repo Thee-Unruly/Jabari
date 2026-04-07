@@ -274,21 +274,31 @@ class KnowledgeService:
         } for r in results]
 
     @staticmethod
-    def sync_with_portal() -> Dict[str, Any]:
+    def sync_ocds_from_url(url: str) -> Dict[str, Any]:
         """
-        Sample sync logic that pulls from a sample OCDS file.
-        In production, this would crawl the Tenders Portal.
+        Live sync from OCDS data publication URL.
+        Efficiently streams and processes records.
         """
-        SAMPLE_URL = "https://raw.githubusercontent.com/open-contracting/sample-data/master/ocds-kenya/kenya-sample.jsonl"
         try:
-            resp = requests.get(SAMPLE_URL)
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".jsonl") as tmp:
-                tmp.write(resp.content)
+            print(f"--- KNOWLEDGE SYNC: Downloading from {url} ---")
+            resp = requests.get(url, stream=True)
+            resp.raise_for_status()
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jsonl.gz") as tmp:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    tmp.write(chunk)
                 path = tmp.name
-            res = KnowledgeService._ingest_jsonl(path)
-            os.remove(path)
+            
+            print(f"--- KNOWLEDGE SYNC: Processing Neural Ingestion ---")
+            res = KnowledgeService._ingest_jsonl(path, is_gzip=True)
+            
+            # Metadata cleanup
+            if os.path.exists(path):
+                os.remove(path)
+                
             return res
         except Exception as e:
+            print(f"--- SYNC ERROR: {e} ---")
             return {"success": False, "error": str(e)}
 
     @staticmethod
@@ -306,6 +316,14 @@ class KnowledgeService:
         """Aggregate data for the Knowledge Hub dashboard."""
         db = SessionLocal()
         try:
+            record_count = db.query(ProcurementRecord).count()
+            if record_count == 0:
+                return {
+                    "summary": {"total_value": 0, "total_records": 0, "avg_value": 0},
+                    "leaderboard": [],
+                    "sectors": []
+                }
+
             summary = db.query(
                 func.sum(ProcurementRecord.amount).label("total_value"),
                 func.count(ProcurementRecord.id).label("total_records"),
@@ -325,9 +343,9 @@ class KnowledgeService:
 
             return {
                 "summary": {
-                    "total_value": summary.total_value or 0,
-                    "total_records": summary.total_records or 0,
-                    "avg_value": summary.avg_value or 0
+                    "total_value": float(summary.total_value or 0),
+                    "total_records": int(summary.total_records or 0),
+                    "avg_value": float(summary.avg_value or 0)
                 },
                 "leaderboard": [dict(row._asdict()) for row in leaderboard],
                 "sectors": [dict(row._asdict()) for row in sectors]
