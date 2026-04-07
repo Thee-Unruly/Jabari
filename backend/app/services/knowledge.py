@@ -4,7 +4,7 @@ import gzip
 from datetime import datetime
 from typing import Any, List, Dict, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from app.db import ProcurementRecord, SessionLocal
 
 import requests
@@ -91,39 +91,31 @@ class KnowledgeService:
         db = SessionLocal()
         count = 0
         skipped = 0
+        batch_size = 100 
         
-        # Performance: Pre-fetch all existing OCIDs to avoid N+1 queries
+        # Performance: Pre-fetch all existing OCIDs
         existing_ocids = set(res[0] for res in db.query(ProcurementRecord.ocid).all())
+        current_batch = []
         
         try:
+            from app.services.vector_store import VectorStoreService
             f = gzip.open(file_path, 'rt', encoding='utf-8') if is_gzip else open(file_path, 'r', encoding='utf-8')
             with f:
                 for line in f:
                     try:
                         data = json.loads(line)
                         ocid = data.get("ocid")
-                        
-                        # De-duplication check
                         if ocid and ocid in existing_ocids:
                             skipped += 1
                             continue
-                        # OCDS JSON structure extraction
-                        # Note: OCDS can have multiple awards, we take the first or the tender value
+                        
                         tender = data.get("tender", {})
                         awards = data.get("awards", [])
-                        
                         buyer_name = data.get("buyer", {}).get("name") or tender.get("procuringEntity", {}).get("name")
-                        if not buyer_name and data.get("parties"):
-                            for party in data["parties"]:
-                                if "buyer" in party.get("roles", []) or "procuringEntity" in party.get("roles", []):
-                                    buyer_name = party.get("name")
-                                    break
-
-                        # Sum all awards if they exist, else fallback to tender value
+                        
                         total_awarded = sum(float(a.get("value", {}).get("amount", 0)) for a in awards)
                         amount = total_awarded if total_awarded > 0 else float(tender.get("value", {}).get("amount", 0))
                         
-                        # Get currency from first award or tender
                         currency = "KES"
                         if awards and awards[0].get("value", {}).get("currency"):
                             currency = awards[0]["value"]["currency"]
@@ -142,12 +134,29 @@ class KnowledgeService:
                             location=tender.get("deliveryLocations", [{}])[0].get("description") if tender.get("deliveryLocations") else None,
                             date_published=KnowledgeService._parse_date(data.get("date"))
                         )
-                        db.add(record)
-                        count += 1
-                        if count % 500 == 0: db.commit()
+                        current_batch.append(record)
+                        
+                        if len(current_batch) >= batch_size:
+                            titles = [r.title for r in current_batch]
+                            embeddings = VectorStoreService.embed_text(titles)
+                            for i, emb in enumerate(embeddings):
+                                current_batch[i].embedding = emb
+                            db.add_all(current_batch)
+                            db.commit()
+                            count += len(current_batch)
+                            current_batch = []
                     except Exception:
                         skipped += 1
-            db.commit()
+                
+                if current_batch:
+                    titles = [r.title for r in current_batch]
+                    embeddings = VectorStoreService.embed_text(titles)
+                    for i, emb in enumerate(embeddings):
+                        current_batch[i].embedding = emb
+                    db.add_all(current_batch)
+                    db.commit()
+                    count += len(current_batch)
+            
             return {"success": True, "indexed": count, "skipped": skipped}
         except Exception as e:
             db.rollback()
@@ -167,7 +176,11 @@ class KnowledgeService:
             
             db = SessionLocal()
             count = 0
-            # Identify columns
+            batch_size = 50
+            current_batch = []
+            
+            from app.services.vector_store import VectorStoreService
+            
             cols = list(df.columns)
             resolved = {}
             for field, candidates in OCDS_COLUMN_MAP.items():
@@ -189,11 +202,28 @@ class KnowledgeService:
                         location=str(val("location") or ""),
                         date_published=KnowledgeService._parse_date(val("date"))
                     )
-                    db.add(record)
-                    count += 1
-                    if count % 500 == 0: db.commit()
+                    current_batch.append(record)
+                    
+                    if len(current_batch) >= batch_size:
+                        titles = [r.title for r in current_batch]
+                        embeddings = VectorStoreService.embed_text(titles)
+                        for i, emb in enumerate(embeddings):
+                            current_batch[i].embedding = emb
+                        db.add_all(current_batch)
+                        db.commit()
+                        count += len(current_batch)
+                        current_batch = []
                 except Exception: continue
-            db.commit()
+                
+            if current_batch:
+                titles = [r.title for r in current_batch]
+                embeddings = VectorStoreService.embed_text(titles)
+                for i, emb in enumerate(embeddings):
+                    current_batch[i].embedding = emb
+                db.add_all(current_batch)
+                db.commit()
+                count += len(current_batch)
+                
             db.close()
             return {"success": True, "indexed": count}
         except Exception as e:
@@ -202,29 +232,40 @@ class KnowledgeService:
     @staticmethod
     def get_benchmarks(query: str, db: Session, limit: int = 20) -> List[Dict]:
         """
-        Improved search that breaks the query into keywords and finds records 
-        matching any of the significant terms.
+        Uses Semantic Search if vectors are available, else keywords.
         """
-        # Cleanup query and extract significant keywords
+        try:
+            from app.services.vector_store import VectorStoreService
+            vector = VectorStoreService.embed_text(query)
+            
+            results = db.query(ProcurementRecord).order_by(
+                ProcurementRecord.embedding.l2_distance(vector)
+            ).limit(limit).all()
+            
+            if results:
+                return [{
+                    "ocid": r.ocid, "title": r.title, "buyer": r.buyer_name, 
+                    "amount": r.amount, "currency": r.currency, "date": r.date_published.isoformat() if r.date_published else None,
+                    "status": r.status, "category": r.category, "location": r.location
+                } for r in results]
+        except Exception as e:
+            print(f"Semantic Search Fallback: {e}")
+
         stop_words = {"who", "are", "the", "most", "successful", "winning", "for", "from", "at", "to", "in", "is", "a", "an", "and", "of", "with"}
         keywords = [word.strip('?.,!').lower() for word in query.split() if word.lower() not in stop_words and len(word) > 2]
         
         if not keywords:
-            # Fallback to simple title search if no keywords found
             term = f"%{query}%"
             results = db.query(ProcurementRecord).filter(
                 ProcurementRecord.title.ilike(term) | ProcurementRecord.buyer_name.ilike(term)
             ).order_by(ProcurementRecord.date_published.desc()).limit(limit).all()
         else:
-            # Build an 'OR' filter for all keywords
-            from sqlalchemy import or_
             filters = []
             for kw in keywords:
                 term = f"%{kw}%"
                 filters.append(ProcurementRecord.title.ilike(term))
                 filters.append(ProcurementRecord.buyer_name.ilike(term))
-            
-            results = db.query(ProcurementRecord).filter(or_(*filters)).order_by(ProcurementRecord.date_published.desc()).limit(limit).all()
+            results = db.query(ProcurementRecord).filter(or_(*filters)).limit(limit).all()
 
         return [{
             "ocid": r.ocid, "title": r.title, "buyer": r.buyer_name, 
@@ -233,78 +274,65 @@ class KnowledgeService:
         } for r in results]
 
     @staticmethod
-    def get_stats(db: Session) -> Dict:
-        return {"total_records": db.query(ProcurementRecord).count()}
-
-    @staticmethod
-    def get_insights(db: Session) -> Dict:
+    def sync_with_portal() -> Dict[str, Any]:
         """
-        Calculates macro-level market intelligence from the OCDS database.
+        Sample sync logic that pulls from a sample OCDS file.
+        In production, this would crawl the Tenders Portal.
         """
-        # 1. Macro Stats
-        stats = db.query(
-            func.count(ProcurementRecord.id).label("total_count"),
-            func.sum(ProcurementRecord.amount).label("total_value"),
-            func.avg(ProcurementRecord.amount).label("avg_value")
-        ).first()
-
-        # 2. Top Buyers (Leaderboard)
-        top_buyers = db.query(
-            ProcurementRecord.buyer_name,
-            func.count(ProcurementRecord.id).label("count"),
-            func.sum(ProcurementRecord.amount).label("value")
-        ).group_by(ProcurementRecord.buyer_name).order_by(func.count(ProcurementRecord.id).desc()).limit(5).all()
-
-        # 3. Category Breakdown (Market Share)
-        top_categories = db.query(
-            ProcurementRecord.category,
-            func.count(ProcurementRecord.id).label("count"),
-            func.sum(ProcurementRecord.amount).label("value")
-        ).filter(ProcurementRecord.category != None).group_by(ProcurementRecord.category).order_by(func.count(ProcurementRecord.id).desc()).limit(5).all()
-
-        return {
-            "summary": {
-                "total_records": stats.total_count or 0,
-                "total_value": float(stats.total_value or 0),
-                "avg_value": float(stats.avg_value or 0)
-            },
-            "leaderboard": [
-                {"name": b[0], "count": b[1], "value": float(b[2] or 0)} for b in top_buyers
-            ],
-            "sectors": [
-                {"category": c[0], "count": c[1], "value": float(c[2] or 0)} for c in top_categories
-            ]
-        }
-
-    @staticmethod
-    def sync_ocds_from_url(url: str) -> Dict[str, Any]:
-        """
-        Downloads OCDS data from a URL and ingests it.
-        Supports .jsonl.gz, .csv, and Excel.
-        """
-        # Create a unique filename based on the URL or extension
-        ext = ".jsonl.gz" if "jsonl.gz" in url.lower() else os.path.splitext(url.split('?')[0])[1].lower()
-        if not ext: ext = ".jsonl.gz" # Default for OCDS portal
-        
-        temp_dir = tempfile.gettempdir()
-        file_path = os.path.join(temp_dir, f"jabari_sync_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}")
-        
+        SAMPLE_URL = "https://raw.githubusercontent.com/open-contracting/sample-data/master/ocds-kenya/kenya-sample.jsonl"
         try:
-            print(f"Downloading OCDS data from {url}...")
-            response = requests.get(url, stream=True, timeout=300)
-            response.raise_for_status()
-            
-            with open(file_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk: f.write(chunk)
-            
-            print(f"Download complete: {file_path}")
-            result = KnowledgeService.ingest_ocds_file(file_path)
-            
-            # Cleanup temp file
-            if os.path.exists(file_path): os.remove(file_path)
-            
-            return result
+            resp = requests.get(SAMPLE_URL)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jsonl") as tmp:
+                tmp.write(resp.content)
+                path = tmp.name
+            res = KnowledgeService._ingest_jsonl(path)
+            os.remove(path)
+            return res
         except Exception as e:
-            if os.path.exists(file_path): os.remove(file_path)
             return {"success": False, "error": str(e)}
+
+    @staticmethod
+    def get_stats() -> Dict[str, Any]:
+        """Returns aggregate stats from the knowledge base."""
+        db = SessionLocal()
+        try:
+            total = db.query(ProcurementRecord).count()
+            return {"total_records": total}
+        finally:
+            db.close()
+
+    @staticmethod
+    def get_market_insights() -> Dict[str, Any]:
+        """Aggregate data for the Knowledge Hub dashboard."""
+        db = SessionLocal()
+        try:
+            summary = db.query(
+                func.sum(ProcurementRecord.amount).label("total_value"),
+                func.count(ProcurementRecord.id).label("total_records"),
+                func.avg(ProcurementRecord.amount).label("avg_value")
+            ).first()
+
+            leaderboard = db.query(
+                ProcurementRecord.buyer_name.label("name"),
+                func.count(ProcurementRecord.id).label("count"),
+                func.sum(ProcurementRecord.amount).label("value")
+            ).group_by(ProcurementRecord.buyer_name).order_by(text("value DESC")).limit(5).all()
+
+            sectors = db.query(
+                ProcurementRecord.category.label("category"),
+                func.sum(ProcurementRecord.amount).label("value")
+            ).group_by(ProcurementRecord.category).order_by(text("value DESC")).limit(3).all()
+
+            return {
+                "summary": {
+                    "total_value": summary.total_value or 0,
+                    "total_records": summary.total_records or 0,
+                    "avg_value": summary.avg_value or 0
+                },
+                "leaderboard": [dict(row._asdict()) for row in leaderboard],
+                "sectors": [dict(row._asdict()) for row in sectors]
+            }
+        finally:
+            db.close()
+
+from sqlalchemy import text
