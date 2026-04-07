@@ -191,6 +191,14 @@ async def sync_knowledge_base():
         "skipped": result.get("skipped", 0)
     }
 
+@app.post("/knowledge/reset")
+async def reset_knowledge_base():
+    """Wipes all market records for a clean start."""
+    result = KnowledgeService.clear_all()
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error"))
+    return {"status": "success", "message": result.get("message")}
+
 @app.post("/knowledge/ingest")
 async def ingest_knowledge_base(file: UploadFile = File(...)):
     """

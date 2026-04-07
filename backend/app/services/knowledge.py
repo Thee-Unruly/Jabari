@@ -58,6 +58,20 @@ class KnowledgeService:
         except (ValueError, TypeError): return 0.0
 
     @staticmethod
+    def clear_all():
+        """Wipes all records from the procurement knowledge table."""
+        db = SessionLocal()
+        try:
+            db.query(ProcurementRecord).delete()
+            db.commit()
+            return {"success": True, "message": "Knowledge vault cleared successfully."}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+        finally:
+            db.close()
+
+    @staticmethod
     def ingest_ocds_file(file_path: str) -> Dict[str, Any]:
         ext = os.path.splitext(file_path)[1].lower()
         if file_path.endswith(".jsonl.gz"):
@@ -76,12 +90,22 @@ class KnowledgeService:
         db = SessionLocal()
         count = 0
         skipped = 0
+        
+        # Performance: Pre-fetch all existing OCIDs to avoid N+1 queries
+        existing_ocids = set(res[0] for res in db.query(ProcurementRecord.ocid).all())
+        
         try:
             f = gzip.open(file_path, 'rt', encoding='utf-8') if is_gzip else open(file_path, 'r', encoding='utf-8')
             with f:
                 for line in f:
                     try:
                         data = json.loads(line)
+                        ocid = data.get("ocid")
+                        
+                        # De-duplication check
+                        if ocid and ocid in existing_ocids:
+                            skipped += 1
+                            continue
                         # OCDS JSON structure extraction
                         # Note: OCDS can have multiple awards, we take the first or the tender value
                         tender = data.get("tender", {})

@@ -4,7 +4,7 @@ import {
   Search, Globe, TrendingUp, DollarSign, 
   MapPin, Calendar, ExternalLink, Loader2,
   FileText, ShieldCheck, Upload, Database, 
-  CheckCircle2, AlertCircle, RefreshCw
+  CheckCircle2, AlertCircle, RefreshCw, Trash2
 } from 'lucide-react';
 
 /* ─── Jabari design tokens ─── */
@@ -111,6 +111,22 @@ const KnowledgeHub = () => {
         }
     };
 
+    const handleReset = async () => {
+        if (!window.confirm('⚠️ This will permanently delete ALL market records. Are you sure?')) return;
+        setIsUploading(true);
+        setUploadStatus({ state: 'loading', message: 'Clearing database...' });
+        try {
+            await axios.post(`${baseUrl}/knowledge/reset`);
+            setUploadStatus({ state: 'success', message: 'Database Cleared', details: 'All records removed. Ready for fresh ingestion.' });
+            setResults([]);
+            fetchStats();
+        } catch (err) {
+            setUploadStatus({ state: 'error', message: 'Reset Failed', details: err.response?.data?.detail || 'Unknown error' });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     return (
         <div style={{ display: 'flex', height: '100%', background: T.cream, fontFamily: T.sans }}>
             
@@ -121,24 +137,42 @@ const KnowledgeHub = () => {
                         <h1 style={{ fontFamily: T.serif, fontSize: '24px', fontStyle: 'italic', marginBottom: '4px' }}>Market Intelligence</h1>
                         <p style={{ fontSize: '11px', color: T.faint, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jabari Knowledge Engine</p>
                     </div>
-                    <button 
-                        onClick={handleSync}
-                        disabled={isUploading}
-                        title="Sync Live Data"
-                        style={{ 
-                            background: T.surface, 
-                            border: `0.5px solid ${T.border}`, 
-                            borderRadius: '8px', 
-                            padding: '8px', 
-                            cursor: 'pointer',
-                            color: T.muted,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                        }}
-                    >
-                        <RefreshCw size={14} className={isUploading ? "animate-spin" : ""} />
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                        <button 
+                            onClick={handleSync}
+                            disabled={isUploading}
+                            title="Sync Live Data"
+                            style={{ 
+                                background: T.surface, 
+                                border: `0.5px solid ${T.border}`, 
+                                borderRadius: '8px', 
+                                padding: '8px', 
+                                cursor: 'pointer',
+                                color: T.muted,
+                                display: 'flex',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <RefreshCw size={14} className={isUploading ? "animate-spin" : ""} />
+                        </button>
+                        <button 
+                            onClick={handleReset}
+                            disabled={isUploading}
+                            title="Reset Database"
+                            style={{ 
+                                background: T.surface, 
+                                border: `0.5px solid ${T.border}`, 
+                                borderRadius: '8px', 
+                                padding: '8px', 
+                                cursor: 'pointer',
+                                color: '#c0392b',
+                                display: 'flex',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
