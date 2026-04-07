@@ -4,7 +4,8 @@ import {
   Search, Globe, TrendingUp, DollarSign, 
   MapPin, Calendar, ExternalLink, Loader2,
   FileText, ShieldCheck, Upload, Database, 
-  CheckCircle2, AlertCircle, RefreshCw, Trash2
+  CheckCircle2, AlertCircle, RefreshCw, Trash2,
+  Sparkles, Brain
 } from 'lucide-react';
 
 /* ─── Jabari design tokens ─── */
@@ -31,6 +32,10 @@ const KnowledgeHub = () => {
     const [insights, setInsights] = useState(null);
     const [uploadStatus, setUploadStatus] = useState({ state: 'idle', message: '', details: null });
     const [isUploading, setIsUploading] = useState(false);
+    
+    // Neural Mode States
+    const [aiBrief, setAiBrief] = useState(null);
+    const [isThinking, setIsThinking] = useState(false);
 
     const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -52,8 +57,26 @@ const KnowledgeHub = () => {
     }, []);
 
     const handleSearch = async () => {
-        if (!query.trim()) { setResults([]); return; }
+        if (!query.trim()) { 
+            setResults([]); 
+            setAiBrief(null);
+            return; 
+        }
+        
         setIsSearching(true);
+        setAiBrief(null);
+
+        // If it looks like a question, trigger the AI Brain simultaneously
+        const isQuestion = ["who", "what", "how", "compare", "list", "why", "where"].some(q => query.toLowerCase().includes(q));
+        
+        if (isQuestion) {
+            setIsThinking(true);
+            axios.post(`${baseUrl}/assistant/ask`, { question: query })
+                .then(res => setAiBrief(res.data.answer))
+                .catch(err => console.error("Market Brief Error", err))
+                .finally(() => setIsThinking(false));
+        }
+
         try {
             const res = await axios.get(`${baseUrl}/knowledge/search?q=${encodeURIComponent(query)}`);
             setResults(res.data);
@@ -113,13 +136,13 @@ const KnowledgeHub = () => {
                         value={query}
                         onChange={e => setQuery(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                        placeholder="Search benchmarks..."
+                        placeholder="Search or ask a question..."
                         style={{ width: '100%', padding: '12px 40px 12px 14px', border: `0.5px solid ${T.border}`, borderRadius: '8px', background: '#fff', fontSize: '13px', outline: 'none' }}
                     />
                     <button onClick={handleSearch} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.muted }}>
-                        {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                        {isThinking ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} color={T.accent} />}
                     </button>
-                    {results.length > 0 && <button onClick={() => {setQuery(''); setResults([]);}} style={{ fontSize: '10px', marginTop: '8px', color: T.accent, background: 'none', border: 'none', cursor: 'pointer' }}>Clear Results</button>}
+                    {results.length > 0 && <button onClick={() => {setQuery(''); setResults([]); setAiBrief(null);}} style={{ fontSize: '10px', marginTop: '8px', color: T.accent, background: 'none', border: 'none', cursor: 'pointer' }}>Clear Dashboard</button>}
                 </div>
 
                 <div style={{ padding: '1.5rem', borderRadius: '12px', background: '#fff', border: `0.5px solid ${T.border}` }}>
@@ -154,9 +177,28 @@ const KnowledgeHub = () => {
                 )}
             </aside>
 
-            {/* ── MAIN CONTENT: INSIGHTS or SEARCH RESULTS ── */}
+            {/* ── MAIN CONTENT ── */}
             <main style={{ flex: 1, padding: '3rem', overflowY: 'auto' }}>
-                {results.length === 0 && !isSearching ? (
+                
+                {/* 🧠 NEURAL BRIEF (Appears when asking questions) */}
+                {aiBrief && (
+                    <div style={{ 
+                        background: '#fff', border: `1px solid ${T.accent}`, borderRadius: '16px', 
+                        padding: '2rem', marginBottom: '3rem', boxShadow: '0 8px 32px -10px rgba(184, 134, 11, 0.15)',
+                        position: 'relative', overflow: 'hidden'
+                    }}>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: T.accent }}></div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem' }}>
+                            <div style={{ background: T.accent, color: '#fff', padding: '6px', borderRadius: '8px' }}><Brain size={18}/></div>
+                            <h3 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: T.accent }}>Jabari Intelligence // Market Brief</h3>
+                        </div>
+                        <div style={{ fontSize: '16px', color: T.ink, lineHeight: 1.6, whiteSpace: 'pre-wrap', fontFamily: T.serif }}>
+                            {aiBrief}
+                        </div>
+                    </div>
+                )}
+
+                {results.length === 0 && !isSearching && !isThinking ? (
                     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
                         <div style={{ marginBottom: '3rem' }}>
                             <h2 style={{ fontFamily: T.serif, fontSize: '36px', fontStyle: 'italic', marginBottom: '8px' }}>Market Command Center</h2>
@@ -186,7 +228,6 @@ const KnowledgeHub = () => {
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
-                            {/* Leaderboard */}
                             <div style={{ padding: '2rem', background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '16px' }}>
                                 <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <TrendingUp size={16} color={T.accent} /> Top Procuring Agencies
@@ -204,7 +245,6 @@ const KnowledgeHub = () => {
                                 </div>
                             </div>
 
-                            {/* Sectors */}
                             <div style={{ padding: '2rem', background: T.ink, borderRadius: '16px', color: '#fff' }}>
                                 <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '1.5rem' }}>Market Share by Sector</h4>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -239,10 +279,6 @@ const KnowledgeHub = () => {
                                             <p style={{ fontSize: '20px', fontWeight: 600 }}>{r.currency} {r.amount.toLocaleString()}</p>
                                             <p style={{ fontSize: '11px', color: T.faint }}>OCID: {r.ocid}</p>
                                         </div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '1.5rem', borderTop: `0.5px solid ${T.border}`, paddingTop: '1rem', fontSize: '12px', color: T.muted }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={14} /> {r.location || 'Nationwide'}</div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Database size={14} /> {r.category || 'General'}</div>
                                     </div>
                                 </div>
                             ))}
