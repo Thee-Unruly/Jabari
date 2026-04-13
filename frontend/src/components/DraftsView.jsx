@@ -2,10 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import {
   FileText, Wand2, Download, Copy, Loader2,
-  AlertCircle, CheckCircle2, Check, ChevronDown
+  AlertCircle, CheckCircle2, Check, ChevronDown, FileDown
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { DocumentEditorContainerComponent, Toolbar } from '@syncfusion/ej2-react-documenteditor';
+
+// ─── Syncfusion Styles ─── 
+import '@syncfusion/ej2-base/styles/material.css';
+import '@syncfusion/ej2-react-documenteditor/styles/material.css';
 
 /* ─── Jabari cream tokens ───────────────────────────────────── */
 const T = {
@@ -41,6 +46,7 @@ const DraftsView = ({ sources = [] }) => {
   const [showTenderDropdown, setShowTenderDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const tenderDropdownRef = useRef(null);
+  const docEditorRef = useRef(null);
 
   const filteredSources = sources.filter(d => selectedTenderId ? d.tender_id === selectedTenderId : true);
   const activeSourceName = filteredSources.find(d => d.id === selectedDocId)?.name;
@@ -95,7 +101,16 @@ const DraftsView = ({ sources = [] }) => {
     if (!draft?.content || !draft?.title) return;
     setIsExporting(true);
     const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
     try {
+      // If using Syncfusion editor, export from there
+      if (draftType === 'technical_proposal' && docEditorRef.current) {
+        docEditorRef.current.documentEditor.save(draft.title.replace(/ /g, '_') + '.docx', 'Docx');
+        setIsExporting(false);
+        return;
+      }
+
+      // Otherwise, use the API endpoint
       const response = await axios.post(
         `${baseUrl}/export/docx`,
         { title: draft.title, content: draft.content },
@@ -131,6 +146,22 @@ const DraftsView = ({ sources = [] }) => {
     cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: T.sans,
     opacity: disabled ? 0.4 : 1, transition: 'color 0.15s',
   });
+
+  // ─── Convert Markdown to basic HTML for Word editor ─── 
+  const convertMarkdownToHtml = (markdown) => {
+    if (!markdown) return '';
+    let html = markdown
+      .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
+      .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
+      .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.*?)__/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/_(.*?)_/g, '<em>$1</em>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br />');
+    return html;
+  };
 
   return (
     <div style={{
@@ -417,19 +448,18 @@ const DraftsView = ({ sources = [] }) => {
               background: '#fff',
               border: `0.5px solid ${T.border}`,
               borderRadius: '8px',
-              padding: '3.5rem 4rem',
-              minHeight: '800px',
+              overflow: 'hidden',
               boxShadow: '0 4px 24px rgba(26,26,26,0.07)',
             }}>
               {isGenerating ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '600px', gap: '12px', background: '#fff' }}>
                   <Loader2 style={{ width: '28px', height: '28px', color: T.ink, animation: 'jabari-spin 1s linear infinite' }} />
                   <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.muted }}>
                     Drafting Engine Engaged…
                   </p>
                 </div>
               ) : draft?.error ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '12px', color: '#c45a5a' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '600px', gap: '12px', color: '#c45a5a', background: '#fff' }}>
                   <AlertCircle style={{ width: '32px', height: '32px' }} />
                   <p style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                     Neural Synthesis Failed
@@ -438,31 +468,53 @@ const DraftsView = ({ sources = [] }) => {
                     {draft.error}
                   </p>
                 </div>
+              ) : draftType === 'technical_proposal' && draft ? (
+                // ─── SYNCFUSION WORD EDITOR ─── 
+                <DocumentEditorContainerComponent
+                  ref={docEditorRef}
+                  id="jabari-document-editor"
+                  serviceUrl="https://ej2services.syncfusion.com/production/web-services/api/documenteditor/"
+                  enableToolbar={true}
+                  height="600px"
+                  style={{ width: '100%' }}
+                  created={() => {
+                    if (docEditorRef.current && draft?.content) {
+                      const editor = docEditorRef.current.documentEditor;
+                      const htmlContent = `<html><body>${convertMarkdownToHtml(draft.content)}</body></html>`;
+                      editor.open(htmlContent);
+                    }
+                  }}
+                />
               ) : (
                 <div style={{
+                  padding: '3.5rem 4rem',
+                  minHeight: '600px',
                   fontFamily: T.serif, fontSize: '15px', lineHeight: 1.85,
                   color: T.ink2,
+                  background: '#fff',
                 }}>
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      h1: ({node, ...props}) => <h1 style={{fontSize: '28px', fontWeight: 600, marginTop: '24px', marginBottom: '16px', color: T.ink, fontStyle: 'normal'}} {...props} />,
-                      h2: ({node, ...props}) => <h2 style={{fontSize: '22px', fontWeight: 600, marginTop: '24px', marginBottom: '16px', color: T.ink, fontStyle: 'normal'}} {...props} />,
-                      h3: ({node, ...props}) => <h3 style={{fontSize: '18px', fontWeight: 600, marginTop: '20px', marginBottom: '12px', color: T.ink, fontStyle: 'normal'}} {...props} />,
-                      ul: ({node, ...props}) => <ul style={{paddingLeft: '24px', marginBottom: '16px', listStyleType: 'disc'}} {...props} />,
-                      ol: ({node, ...props}) => <ol style={{paddingLeft: '24px', marginBottom: '16px', listStyleType: 'decimal'}} {...props} />,
-                      li: ({node, ...props}) => <li style={{marginBottom: '8px'}} {...props} />,
-                      p: ({node, ...props}) => <p style={{marginBottom: '16px'}} {...props} />,
-                      strong: ({node, ...props}) => <strong style={{fontWeight: 700, color: T.ink}} {...props} />,
-                      em: ({node, ...props}) => <em style={{fontStyle: 'italic'}} {...props} />,
-                      table: ({node, ...props}) => <div style={{overflowX: 'auto', marginBottom: '24px', fontFamily: T.sans}}><table style={{width: '100%', borderCollapse: 'collapse', border: `1px solid ${T.border}`}} {...props} /></div>,
-                      th: ({node, ...props}) => <th style={{padding: '12px', backgroundColor: T.surface, border: `1px solid ${T.border}`, textAlign: 'left', fontWeight: 600, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: T.ink}} {...props} />,
-                      td: ({node, ...props}) => <td style={{padding: '12px', border: `1px solid ${T.border}`, fontSize: '13px'}} {...props} />,
-                      blockquote: ({node, ...props}) => <blockquote style={{borderLeft: `2px solid ${T.muted}`, paddingLeft: '16px', fontStyle: 'italic', color: T.muted, margin: '24px 0'}} {...props} />
-                    }}
-                  >
-                    {draft?.content || ''}
-                  </ReactMarkdown>
+                  {draft?.content ? (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h1: ({ node, ...props }) => <h1 style={{ fontSize: '28px', fontWeight: 600, marginTop: '24px', marginBottom: '16px', color: T.ink, fontStyle: 'normal' }} {...props} />,
+                        h2: ({ node, ...props }) => <h2 style={{ fontSize: '22px', fontWeight: 600, marginTop: '24px', marginBottom: '16px', color: T.ink, fontStyle: 'normal' }} {...props} />,
+                        h3: ({ node, ...props }) => <h3 style={{ fontSize: '18px', fontWeight: 600, marginTop: '20px', marginBottom: '12px', color: T.ink, fontStyle: 'normal' }} {...props} />,
+                        ul: ({ node, ...props }) => <ul style={{ paddingLeft: '24px', marginBottom: '16px', listStyleType: 'disc' }} {...props} />,
+                        ol: ({ node, ...props }) => <ol style={{ paddingLeft: '24px', marginBottom: '16px', listStyleType: 'decimal' }} {...props} />,
+                        li: ({ node, ...props }) => <li style={{ marginBottom: '8px' }} {...props} />,
+                        p: ({ node, ...props }) => <p style={{ marginBottom: '16px' }} {...props} />,
+                        strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: T.ink }} {...props} />,
+                        em: ({ node, ...props }) => <em style={{ fontStyle: 'italic' }} {...props} />,
+                        table: ({ node, ...props }) => <div style={{ overflowX: 'auto', marginBottom: '24px', fontFamily: T.sans }}><table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${T.border}` }} {...props} /></div>,
+                        th: ({ node, ...props }) => <th style={{ padding: '12px', backgroundColor: T.surface, border: `1px solid ${T.border}`, textAlign: 'left', fontWeight: 600, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: T.ink }} {...props} />,
+                        td: ({ node, ...props }) => <td style={{ padding: '12px', border: `1px solid ${T.border}`, fontSize: '13px' }} {...props} />,
+                        blockquote: ({ node, ...props }) => <blockquote style={{ borderLeft: `2px solid ${T.muted}`, paddingLeft: '16px', fontStyle: 'italic', color: T.muted, margin: '24px 0' }} {...props} />
+                      }}
+                    >
+                      {draft?.content || ''}
+                    </ReactMarkdown>
+                  ) : null}
                 </div>
               )}
             </div>

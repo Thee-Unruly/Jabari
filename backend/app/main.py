@@ -202,7 +202,7 @@ async def reset_knowledge_base():
 @app.get("/knowledge/insights")
 async def get_knowledge_insights(db: Session = Depends(get_db)):
     """Macro-level market data analytics."""
-    return KnowledgeService.get_insights(db)
+    return KnowledgeService.get_market_insights(db)
 
 @app.get("/knowledge/stats")
 async def get_knowledge_stats(db: Session = Depends(get_db)):
