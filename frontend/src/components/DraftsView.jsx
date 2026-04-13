@@ -1,30 +1,29 @@
+// DraftsView — TipTap rich text editor
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import {
-  FileText, Wand2, Download, Copy, Loader2,
-  AlertCircle, CheckCircle2, Check, ChevronDown, FileDown
+  FileText, Wand2, Download, Copy, Loader2, AlertCircle,
+  CheckCircle2, Check, ChevronDown,
+  Bold, Italic, Underline as UnderlineIcon, Strikethrough,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  List, ListOrdered, Heading1, Heading2, Heading3,
+  Undo2, Redo2, Table,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { DocumentEditorContainerComponent, Toolbar } from '@syncfusion/ej2-react-documenteditor';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import UnderlineExt from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import TableExt from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
 
-// ─── Syncfusion Styles ─── 
-import '@syncfusion/ej2-base/styles/material.css';
-import '@syncfusion/ej2-react-documenteditor/styles/material.css';
-
-/* ─── Jabari cream tokens ───────────────────────────────────── */
 const T = {
-  cream: '#F5F2ED',
-  ink: '#1a1a1a',
-  ink2: '#3d3d3a',
-  muted: '#6b6b68',
-  faint: '#9a9a96',
-  border: 'rgba(26,26,26,0.10)',
-  border2: 'rgba(26,26,26,0.06)',
-  surface: 'rgba(26,26,26,0.03)',
-  surface2: 'rgba(26,26,26,0.06)',
-  serif: "'Lora', Georgia, serif",
-  sans: "'DM Sans', system-ui, sans-serif",
+  cream: '#F5F2ED', ink: '#1a1a1a', ink2: '#3d3d3a',
+  muted: '#6b6b68', faint: '#9a9a96',
+  border: 'rgba(26,26,26,0.10)', border2: 'rgba(26,26,26,0.06)',
+  surface: 'rgba(26,26,26,0.03)', surface2: 'rgba(26,26,26,0.06)',
+  serif: "'Lora', Georgia, serif", sans: "'DM Sans', system-ui, sans-serif",
 };
 
 const DRAFT_TYPES = [
@@ -32,6 +31,24 @@ const DRAFT_TYPES = [
   { id: 'cover_letter', label: 'Executive Cover Letter' },
   { id: 'compliance_matrix', label: 'Compliance Matrix' },
 ];
+
+const markdownToHtml = (md) => {
+  if (!md) return '';
+  let html = md
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/_(.+?)_/g, '<em>$1</em>');
+  html = html.replace(/((?:^[-*] .+$\n?)+)/gm, (b) =>
+    '<ul>' + b.trim().split('\n').map(l => `<li>${l.replace(/^[-*] /, '')}</li>`).join('') + '</ul>');
+  html = html.replace(/((?:^\d+\. .+$\n?)+)/gm, (b) =>
+    '<ol>' + b.trim().split('\n').map(l => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('') + '</ol>');
+  html = html.split('\n\n').map(b => b.trim().startsWith('<') ? b : `<p>${b.replace(/\n/g, '<br>')}</p>`).join('');
+  return html;
+};
 
 const DraftsView = ({ sources = [] }) => {
   const [selectedDocId, setSelectedDocId] = useState(null);
@@ -46,488 +63,219 @@ const DraftsView = ({ sources = [] }) => {
   const [showTenderDropdown, setShowTenderDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const tenderDropdownRef = useRef(null);
-  const docEditorRef = useRef(null);
 
   const filteredSources = sources.filter(d => selectedTenderId ? d.tender_id === selectedTenderId : true);
   const activeSourceName = filteredSources.find(d => d.id === selectedDocId)?.name;
   const activeTenderName = tenders.find(t => t.id === selectedTenderId)?.name;
 
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      UnderlineExt,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TableExt.configure({ resizable: true }),
+      TableRow, TableHeader, TableCell,
+    ],
+    content: '',
+    editorProps: { attributes: { class: 'jabari-editor' } },
+  });
+
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
-        setShowDropdown(false);
-      if (tenderDropdownRef.current && !tenderDropdownRef.current.contains(e.target))
-        setShowTenderDropdown(false);
+    if (editor && draft?.content) editor.commands.setContent(markdownToHtml(draft.content));
+  }, [draft?.content, editor]);
+
+  useEffect(() => {
+    const fn = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false);
+      if (tenderDropdownRef.current && !tenderDropdownRef.current.contains(e.target)) setShowTenderDropdown(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
   }, []);
 
   useEffect(() => {
-    if (tenders.length === 0) {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
-      axios.get(`${baseUrl}/tenders`)
-        .then(res => setTenders(res.data))
-        .catch(err => console.error('Tenders Fetch Error', err));
-    }
+    const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+    axios.get(`${base}/tenders`).then(r => setTenders(r.data)).catch(() => { });
   }, []);
 
   const handleGenerate = async () => {
     if (!selectedDocId) return;
-    setIsGenerating(true);
-    setDraft(null);
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+    setIsGenerating(true); setDraft(null); editor?.commands.setContent('');
+    const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
     try {
-      const response = await axios.post(`${baseUrl}/draft`, {
-        document_id: selectedDocId,
-        draft_type: draftType,
-      });
-      setDraft(response.data);
-    } catch (err) {
-      console.error('Drafting Error', err);
-    } finally {
-      setIsGenerating(false);
-    }
+      const res = await axios.post(`${base}/draft`, { document_id: selectedDocId, draft_type: draftType });
+      setDraft(res.data);
+    } catch { setDraft({ error: 'Failed to generate draft. Please try again.' }); }
+    finally { setIsGenerating(false); }
   };
 
   const copyToClipboard = () => {
-    if (!draft?.content) return;
-    navigator.clipboard.writeText(draft.content);
-    setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 2000);
+    navigator.clipboard.writeText(editor ? editor.getText() : draft?.content || '');
+    setCopySuccess(true); setTimeout(() => setCopySuccess(false), 2000);
   };
 
   const handleExportDocx = async () => {
     if (!draft?.content || !draft?.title) return;
     setIsExporting(true);
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
-
+    const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
     try {
-      // Export directly from Syncfusion editor for all draft types
-      if (docEditorRef.current) {
-        docEditorRef.current.documentEditor.save(draft.title.replace(/ /g, '_') + '.docx', 'Docx');
-        setIsExporting(false);
-        return;
-      }
-
-      // Fallback to API endpoint
-      const response = await axios.post(
-        `${baseUrl}/export/docx`,
-        { title: draft.title, content: draft.content },
-        { responseType: 'blob' }
-      );
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${draft.title.replace(/ /g, '_')}.docx`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-    } catch (err) {
-      console.error('Export error:', err);
-    } finally {
-      setIsExporting(false);
-    }
+      const res = await axios.post(`${base}/export/docx`, { title: draft.title, content: draft.content }, { responseType: 'blob' });
+      const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([res.data])), download: `${draft.title.replace(/ /g, '_')}.docx` });
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { console.error(e); } finally { setIsExporting(false); }
   };
 
-  /* ── tiny style helpers ── */
-  const eyebrow = {
-    fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em',
-    textTransform: 'uppercase', color: T.faint, fontFamily: T.sans,
-    display: 'block', marginBottom: '8px',
-  };
-
-  const actionBtn = (disabled) => ({
-    display: 'flex', alignItems: 'center', gap: '6px',
-    padding: '7px 12px', border: `0.5px solid ${T.border}`,
-    borderRadius: '6px', background: 'transparent',
-    color: disabled ? T.faint : T.muted, fontSize: '10px', fontWeight: 500,
-    letterSpacing: '0.06em', textTransform: 'uppercase',
-    cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: T.sans,
-    opacity: disabled ? 0.4 : 1, transition: 'color 0.15s',
-  });
-
-  // ─── Convert Markdown to basic HTML for Word editor ─── 
-  const convertMarkdownToHtml = (markdown) => {
-    if (!markdown) return '';
-    let html = markdown
-      .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
-      .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
-      .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/__(.*?)__/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/_(.*?)_/g, '<em>$1</em>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/\n/g, '<br />');
-    return html;
-  };
+  const ey = { fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.faint, fontFamily: T.sans, display: 'block', marginBottom: '8px' };
+  const ab = (d) => ({ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 12px', border: `0.5px solid ${T.border}`, borderRadius: '6px', background: 'transparent', color: d ? T.faint : T.muted, fontSize: '10px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: d ? 'not-allowed' : 'pointer', fontFamily: T.sans, opacity: d ? 0.4 : 1, transition: 'color 0.15s' });
+  const tb = (a) => ({ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', border: 'none', borderRadius: '4px', background: a ? 'rgba(26,26,26,0.10)' : 'transparent', color: a ? T.ink : T.ink2, cursor: 'pointer' });
+  const sep = { width: '1px', height: '20px', background: T.border, margin: '0 4px', flexShrink: 0 };
+  const dp = (o) => ({ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', border: `0.5px solid ${o ? T.ink : T.border}`, borderRadius: '6px', background: T.surface, color: T.ink, fontSize: '13px', cursor: 'pointer', fontFamily: T.sans, textAlign: 'left' });
+  const dpl = { position: 'absolute', left: 0, right: 0, top: 'calc(100% + 4px)', zIndex: 70, background: T.cream, border: `0.5px solid ${T.border}`, borderRadius: '6px', boxShadow: '0 8px 32px rgba(26,26,26,0.12)', overflow: 'hidden' };
+  const di = (a) => ({ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', border: 'none', borderBottom: `0.5px solid ${T.border2}`, background: a ? T.surface2 : 'transparent', color: a ? T.ink : T.ink2, fontSize: '13px', fontWeight: a ? 500 : 400, cursor: 'pointer', textAlign: 'left', fontFamily: T.sans });
 
   return (
-    <div style={{
-      display: 'flex', flex: 1, overflow: 'hidden',
-      background: T.cream, fontFamily: T.sans,
-    }}>
+    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: T.cream, fontFamily: T.sans }}>
 
-      {/* ── LEFT: CONFIG PANEL ── */}
-      <aside style={{
-        width: '300px', flexShrink: 0,
-        borderRight: `0.5px solid ${T.border}`,
-        display: 'flex', flexDirection: 'column',
-        padding: '2rem', gap: '2rem',
-        background: T.cream, position: 'relative',
-        overflowY: 'auto',
-      }}>
-
-        {/* Heading */}
+      {/* LEFT PANEL */}
+      <aside style={{ width: '300px', flexShrink: 0, borderRight: `0.5px solid ${T.border}`, display: 'flex', flexDirection: 'column', padding: '2rem', gap: '2rem', background: T.cream, overflowY: 'auto' }}>
         <div>
-          <span style={eyebrow}>Production Config</span>
-          <h2 style={{
-            fontFamily: T.serif, fontSize: '22px', fontWeight: 400,
-            fontStyle: 'italic', color: T.ink, margin: 0, letterSpacing: '-0.01em',
-          }}>
-            Drafting Parameters
-          </h2>
+          <span style={ey}>Production Config</span>
+          <h2 style={{ fontFamily: T.serif, fontSize: '22px', fontWeight: 400, fontStyle: 'italic', color: T.ink, margin: 0 }}>Drafting Parameters</h2>
         </div>
 
-        {/* Project Selector */}
-        <div style={{ position: 'relative', zIndex: showTenderDropdown ? 60 : 20, marginBottom: '-8px' }} ref={tenderDropdownRef}>
-          <span style={eyebrow}>Workspace Scope</span>
-          <button
-            onClick={() => { setShowTenderDropdown(p => !p); setShowDropdown(false); }}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', padding: '10px 14px',
-              border: `0.5px solid ${showTenderDropdown ? T.ink : T.border}`,
-              borderRadius: '6px', background: T.surface,
-              color: T.ink,
-              fontSize: '13px', cursor: 'pointer', fontFamily: T.sans,
-              textAlign: 'left', transition: 'border-color 0.15s',
-            }}
-          >
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
-              {activeTenderName ?? 'Universal Vault'}
-            </span>
-            <ChevronDown style={{
-              width: '14px', height: '14px', color: T.muted, flexShrink: 0,
-              transform: showTenderDropdown ? 'rotate(180deg)' : 'rotate(0deg)',
-              transition: 'transform 0.2s',
-            }} />
+        {/* Workspace */}
+        <div style={{ position: 'relative', zIndex: showTenderDropdown ? 60 : 20 }} ref={tenderDropdownRef}>
+          <span style={ey}>Workspace Scope</span>
+          <button onClick={() => { setShowTenderDropdown(p => !p); setShowDropdown(false); }} style={dp(showTenderDropdown)}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>{activeTenderName ?? 'Universal Vault'}</span>
+            <ChevronDown size={14} color={T.muted} style={{ flexShrink: 0, transform: showTenderDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
           </button>
-
           {showTenderDropdown && (
-            <div style={{
-              position: 'absolute', left: 0, right: 0,
-              top: 'calc(100% + 4px)', zIndex: 70,
-              background: T.cream, border: `0.5px solid ${T.border}`,
-              borderRadius: '6px',
-              boxShadow: '0 8px 32px rgba(26,26,26,0.12)',
-              overflow: 'hidden',
-            }}>
-              <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
-                <button
-                  onClick={() => { setSelectedTenderId(null); setSelectedDocId(null); setShowTenderDropdown(false); }}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center',
-                    justifyContent: 'space-between', padding: '11px 14px',
-                    border: 'none', borderBottom: `0.5px solid ${T.border2}`,
-                    background: selectedTenderId === null ? T.surface2 : 'transparent',
-                    color: selectedTenderId === null ? T.ink : T.ink2,
-                    fontSize: '13px', fontWeight: selectedTenderId === null ? 500 : 400,
-                    cursor: 'pointer', textAlign: 'left', fontFamily: T.sans,
-                  }}
-                  onMouseOver={e => { if (selectedTenderId !== null) e.currentTarget.style.background = T.surface; }}
-                  onMouseOut={e => { if (selectedTenderId !== null) e.currentTarget.style.background = 'transparent'; }}
-                >
-                  Universal Vault
-                  {selectedTenderId === null && <Check style={{ width: '13px', height: '13px', flexShrink: 0, color: T.ink }} />}
+            <div style={dpl}><div style={{ maxHeight: '240px', overflowY: 'auto' }}>
+              <button onClick={() => { setSelectedTenderId(null); setSelectedDocId(null); setShowTenderDropdown(false); }} style={di(selectedTenderId === null)}>Universal Vault {selectedTenderId === null && <Check size={13} color={T.ink} />}</button>
+              {tenders.map(t => (
+                <button key={t.id} onClick={() => { setSelectedTenderId(t.id); setSelectedDocId(null); setShowTenderDropdown(false); }} style={di(selectedTenderId === t.id)}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>{t.name}</span>
+                  {selectedTenderId === t.id && <Check size={13} color={T.ink} />}
                 </button>
-
-                {tenders.map((tender, i) => (
-                  <button
-                    key={tender.id}
-                    onClick={() => { setSelectedTenderId(tender.id); setSelectedDocId(null); setShowTenderDropdown(false); }}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center',
-                      justifyContent: 'space-between', padding: '11px 14px',
-                      border: 'none', borderBottom: i < tenders.length - 1 ? `0.5px solid ${T.border2}` : 'none',
-                      background: selectedTenderId === tender.id ? T.surface2 : 'transparent',
-                      color: selectedTenderId === tender.id ? T.ink : T.ink2,
-                      fontSize: '13px', fontWeight: selectedTenderId === tender.id ? 500 : 400,
-                      cursor: 'pointer', textAlign: 'left', fontFamily: T.sans,
-                    }}
-                    onMouseOver={e => { if (selectedTenderId !== tender.id) e.currentTarget.style.background = T.surface; }}
-                    onMouseOut={e => { if (selectedTenderId !== tender.id) e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
-                      {tender.name}
-                    </span>
-                    {selectedTenderId === tender.id && <Check style={{ width: '13px', height: '13px', flexShrink: 0, color: T.ink }} />}
-                  </button>
-                ))}
-              </div>
-            </div>
+              ))}
+            </div></div>
           )}
         </div>
 
-        {/* Source selector */}
+        {/* Source */}
         <div style={{ position: 'relative', zIndex: showDropdown ? 50 : 10 }} ref={dropdownRef}>
-          <span style={eyebrow}>Source Material</span>
-
-          <button
-            onClick={() => { setShowDropdown(p => !p); setShowTenderDropdown(false); }}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', padding: '10px 14px',
-              border: `0.5px solid ${showDropdown ? T.ink : T.border}`,
-              borderRadius: '6px', background: T.surface,
-              color: selectedDocId ? T.ink : T.muted,
-              fontSize: '13px', cursor: 'pointer', fontFamily: T.sans,
-              textAlign: 'left', transition: 'border-color 0.15s',
-            }}
-          >
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
-              {activeSourceName ?? 'Select Vaulted Source…'}
-            </span>
-            <ChevronDown style={{
-              width: '14px', height: '14px', color: T.muted, flexShrink: 0,
-              transform: showDropdown ? 'rotate(180deg)' : 'rotate(0deg)',
-              transition: 'transform 0.2s',
-            }} />
+          <span style={ey}>Source Material</span>
+          <button onClick={() => { setShowDropdown(p => !p); setShowTenderDropdown(false); }} style={{ ...dp(showDropdown), color: selectedDocId ? T.ink : T.muted }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>{activeSourceName ?? 'Select Vaulted Source…'}</span>
+            <ChevronDown size={14} color={T.muted} style={{ flexShrink: 0, transform: showDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
           </button>
-
-          {/* Dropdown list */}
           {showDropdown && (
-            <div style={{
-              position: 'absolute', left: 0, right: 0,
-              top: 'calc(100% + 4px)', zIndex: 60,
-              background: T.cream, border: `0.5px solid ${T.border}`,
-              borderRadius: '6px',
-              boxShadow: '0 8px 32px rgba(26,26,26,0.12)',
-              overflow: 'hidden',
-            }}>
-              <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
-                {filteredSources.length === 0 && (
-                  <div style={{ padding: '14px 16px', fontSize: '11px', color: T.faint, textAlign: 'center', fontStyle: 'italic' }}>
-                    No vaulted sources in this scope
-                  </div>
-                )}
-                {filteredSources.map((doc, i) => (
-                  <button
-                    key={`doc-${doc.id}`}
-                    onClick={() => { setSelectedDocId(doc.id); setShowDropdown(false); }}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center',
-                      justifyContent: 'space-between', padding: '11px 14px',
-                      border: 'none', borderBottom: i < filteredSources.length - 1 ? `0.5px solid ${T.border2}` : 'none',
-                      background: selectedDocId === doc.id ? T.surface2 : 'transparent',
-                      color: selectedDocId === doc.id ? T.ink : T.ink2,
-                      fontSize: '13px', fontWeight: selectedDocId === doc.id ? 500 : 400,
-                      cursor: 'pointer', textAlign: 'left', fontFamily: T.sans,
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseOver={e => { if (selectedDocId !== doc.id) e.currentTarget.style.background = T.surface; }}
-                    onMouseOut={e => { if (selectedDocId !== doc.id) e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
-                      {doc.name}
-                    </span>
-                    {selectedDocId === doc.id && <Check style={{ width: '13px', height: '13px', flexShrink: 0, color: T.ink }} />}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <div style={dpl}><div style={{ maxHeight: '240px', overflowY: 'auto' }}>
+              {filteredSources.length === 0 && <div style={{ padding: '14px', fontSize: '11px', color: T.faint, textAlign: 'center', fontStyle: 'italic' }}>No vaulted sources in this scope</div>}
+              {filteredSources.map(doc => (
+                <button key={doc.id} onClick={() => { setSelectedDocId(doc.id); setShowDropdown(false); }} style={di(selectedDocId === doc.id)}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>{doc.name}</span>
+                  {selectedDocId === doc.id && <Check size={13} color={T.ink} />}
+                </button>
+              ))}
+            </div></div>
           )}
         </div>
 
         {/* Artifact type */}
-        <div style={{ position: 'relative', zIndex: 10 }}>
-          <span style={eyebrow}>Artifact Type</span>
+        <div>
+          <span style={ey}>Artifact Type</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {DRAFT_TYPES.map(type => (
-              <button
-                key={type.id}
-                onClick={() => setDraftType(type.id)}
-                style={{
-                  padding: '11px 14px', textAlign: 'left',
-                  border: `0.5px solid ${draftType === type.id ? T.ink : T.border}`,
-                  borderRadius: '6px',
-                  background: draftType === type.id ? T.ink : 'transparent',
-                  color: draftType === type.id ? T.cream : T.muted,
-                  fontSize: '11px', fontWeight: 500, letterSpacing: '0.06em',
-                  textTransform: 'uppercase', cursor: 'pointer', fontFamily: T.sans,
-                  transition: 'all 0.15s',
-                }}
-              >
+              <button key={type.id} onClick={() => setDraftType(type.id)} style={{ padding: '11px 14px', textAlign: 'left', border: `0.5px solid ${draftType === type.id ? T.ink : T.border}`, borderRadius: '6px', background: draftType === type.id ? T.ink : 'transparent', color: draftType === type.id ? T.cream : T.muted, fontSize: '11px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: T.sans, transition: 'all 0.15s' }}>
                 {type.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Generate button — pinned to bottom */}
+        {/* Generate */}
         <div style={{ marginTop: 'auto' }}>
-          <button
-            onClick={handleGenerate}
-            disabled={!selectedDocId || isGenerating}
-            style={{
-              width: '100%', padding: '13px',
-              borderRadius: '24px', border: 'none',
-              background: !selectedDocId || isGenerating ? T.surface2 : T.ink,
-              color: !selectedDocId || isGenerating ? T.faint : T.cream,
-              fontSize: '12px', fontWeight: 500, letterSpacing: '0.07em',
-              textTransform: 'uppercase', cursor: !selectedDocId || isGenerating ? 'not-allowed' : 'pointer',
-              fontFamily: T.sans, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', gap: '8px', transition: 'all 0.15s',
-            }}
-          >
-            {isGenerating
-              ? <><Loader2 style={{ width: '14px', height: '14px', animation: 'jabari-spin 1s linear infinite' }} /> Synthesising…</>
-              : <><Wand2 style={{ width: '14px', height: '14px' }} /> Synthesize Draft</>
-            }
+          <button onClick={handleGenerate} disabled={!selectedDocId || isGenerating} style={{ width: '100%', padding: '13px', borderRadius: '24px', border: 'none', background: !selectedDocId || isGenerating ? T.surface2 : T.ink, color: !selectedDocId || isGenerating ? T.faint : T.cream, fontSize: '12px', fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', cursor: !selectedDocId || isGenerating ? 'not-allowed' : 'pointer', fontFamily: T.sans, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.15s' }}>
+            {isGenerating ? <><Loader2 style={{ width: '14px', height: '14px', animation: 'jabari-spin 1s linear infinite' }} /> Synthesising…</> : <><Wand2 style={{ width: '14px', height: '14px' }} /> Synthesize Draft</>}
           </button>
         </div>
       </aside>
 
-      {/* ── RIGHT: PREVIEW ── */}
-      <main style={{
-        flex: 1, overflowY: 'auto', padding: '2rem',
-        background: T.cream, display: 'flex', justifyContent: 'center',
-      }}>
+      {/* RIGHT: EDITOR */}
+      <main style={{ flex: 1, overflowY: 'auto', padding: '2rem', background: T.cream, display: 'flex', justifyContent: 'center' }}>
         {!draft && !isGenerating ? (
-          /* Empty state */
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', opacity: 0.25, marginTop: '5rem', textAlign: 'center',
-          }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.25, marginTop: '5rem', textAlign: 'center' }}>
             <FileText style={{ width: '64px', height: '64px', marginBottom: '1rem', color: T.ink }} />
-            <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.ink }}>
-              Canvas Ready for Synthesis
-            </p>
+            <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.ink }}>Canvas Ready for Synthesis</p>
           </div>
         ) : (
-          <div style={{ width: '100%', maxWidth: '760px' }}>
+          <div style={{ width: '100%', maxWidth: '820px' }}>
 
-            {/* Toolbar */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: T.ink, opacity: 0.4 }} />
-                <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.muted }}>
-                  Production Preview
-                </span>
+                <span style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.muted }}>Production Preview</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  onClick={copyToClipboard}
-                  style={actionBtn(false)}
-                  onMouseOver={e => e.currentTarget.style.color = T.ink}
-                  onMouseOut={e => e.currentTarget.style.color = T.muted}
-                >
-                  {copySuccess
-                    ? <><CheckCircle2 style={{ width: '13px', height: '13px' }} /> Copied</>
-                    : <><Copy style={{ width: '13px', height: '13px' }} /> Copy</>
-                  }
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={copyToClipboard} style={ab(false)} onMouseOver={e => e.currentTarget.style.color = T.ink} onMouseOut={e => e.currentTarget.style.color = T.muted}>
+                  {copySuccess ? <><CheckCircle2 size={13} /> Copied</> : <><Copy size={13} /> Copy</>}
                 </button>
-                <button
-                  onClick={handleExportDocx}
-                  disabled={isExporting}
-                  style={actionBtn(isExporting)}
-                  onMouseOver={e => { if (!isExporting) e.currentTarget.style.color = T.ink; }}
-                  onMouseOut={e => { if (!isExporting) e.currentTarget.style.color = T.muted; }}
-                >
-                  {isExporting
-                    ? <><Loader2 style={{ width: '13px', height: '13px', animation: 'jabari-spin 1s linear infinite' }} /> Exporting…</>
-                    : <><Download style={{ width: '13px', height: '13px' }} /> Export Word</>
-                  }
+                <button onClick={handleExportDocx} disabled={isExporting} style={ab(isExporting)} onMouseOver={e => { if (!isExporting) e.currentTarget.style.color = T.ink; }} onMouseOut={e => { if (!isExporting) e.currentTarget.style.color = T.muted; }}>
+                  {isExporting ? <><Loader2 size={13} style={{ animation: 'jabari-spin 1s linear infinite' }} /> Exporting…</> : <><Download size={13} /> Export Word</>}
                 </button>
               </div>
             </div>
 
-            {/* Document canvas */}
-            <div style={{
-              background: '#fff',
-              border: `0.5px solid ${T.border}`,
-              borderRadius: '8px',
-              overflow: 'hidden',
-              boxShadow: '0 4px 24px rgba(26,26,26,0.07)',
-            }}>
+            {/* Doc shell */}
+            <div style={{ background: '#fff', border: `0.5px solid ${T.border}`, borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(26,26,26,0.07)' }}>
               {isGenerating ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '600px', gap: '12px', background: '#fff' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '600px', gap: '12px' }}>
                   <Loader2 style={{ width: '28px', height: '28px', color: T.ink, animation: 'jabari-spin 1s linear infinite' }} />
-                  <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.muted }}>
-                    Drafting Engine Engaged…
-                  </p>
+                  <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.muted }}>Drafting Engine Engaged…</p>
                 </div>
               ) : draft?.error ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '600px', gap: '12px', color: '#c45a5a', background: '#fff' }}>
-                  <AlertCircle style={{ width: '32px', height: '32px' }} />
-                  <p style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                    Neural Synthesis Failed
-                  </p>
-                  <p style={{ fontSize: '13px', textAlign: 'center', fontFamily: T.sans, opacity: 0.8 }}>
-                    {draft.error}
-                  </p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '12px', color: '#c45a5a', padding: '2rem' }}>
+                  <AlertCircle size={32} />
+                  <p style={{ fontSize: '13px', textAlign: 'center', fontFamily: T.sans }}>{draft.error}</p>
                 </div>
               ) : draft ? (
-                // ─── SYNCFUSION WORD EDITOR ─── 
-                <DocumentEditorContainerComponent
-                  ref={docEditorRef}
-                  id="jabari-document-editor"
-                  serviceUrl="https://ej2services.syncfusion.com/production/web-services/api/documenteditor/"
-                  enableToolbar={true}
-                  height="600px"
-                  style={{ width: '100%' }}
-                  created={() => {
-                    if (docEditorRef.current && draft?.content) {
-                      const editor = docEditorRef.current.documentEditor;
-                      const htmlContent = `<html><body>${convertMarkdownToHtml(draft.content)}</body></html>`;
-                      editor.open(htmlContent);
-                    }
-                  }}
-                />
-              ) : (
-                <div style={{
-                  padding: '3.5rem 4rem',
-                  minHeight: '600px',
-                  fontFamily: T.serif, fontSize: '15px', lineHeight: 1.85,
-                  color: T.ink2,
-                  background: '#fff',
-                }}>
-                  {draft?.content ? (
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        h1: ({ node, ...props }) => <h1 style={{ fontSize: '28px', fontWeight: 600, marginTop: '24px', marginBottom: '16px', color: T.ink, fontStyle: 'normal' }} {...props} />,
-                        h2: ({ node, ...props }) => <h2 style={{ fontSize: '22px', fontWeight: 600, marginTop: '24px', marginBottom: '16px', color: T.ink, fontStyle: 'normal' }} {...props} />,
-                        h3: ({ node, ...props }) => <h3 style={{ fontSize: '18px', fontWeight: 600, marginTop: '20px', marginBottom: '12px', color: T.ink, fontStyle: 'normal' }} {...props} />,
-                        ul: ({ node, ...props }) => <ul style={{ paddingLeft: '24px', marginBottom: '16px', listStyleType: 'disc' }} {...props} />,
-                        ol: ({ node, ...props }) => <ol style={{ paddingLeft: '24px', marginBottom: '16px', listStyleType: 'decimal' }} {...props} />,
-                        li: ({ node, ...props }) => <li style={{ marginBottom: '8px' }} {...props} />,
-                        p: ({ node, ...props }) => <p style={{ marginBottom: '16px' }} {...props} />,
-                        strong: ({ node, ...props }) => <strong style={{ fontWeight: 700, color: T.ink }} {...props} />,
-                        em: ({ node, ...props }) => <em style={{ fontStyle: 'italic' }} {...props} />,
-                        table: ({ node, ...props }) => <div style={{ overflowX: 'auto', marginBottom: '24px', fontFamily: T.sans }}><table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${T.border}` }} {...props} /></div>,
-                        th: ({ node, ...props }) => <th style={{ padding: '12px', backgroundColor: T.surface, border: `1px solid ${T.border}`, textAlign: 'left', fontWeight: 600, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: T.ink }} {...props} />,
-                        td: ({ node, ...props }) => <td style={{ padding: '12px', border: `1px solid ${T.border}`, fontSize: '13px' }} {...props} />,
-                        blockquote: ({ node, ...props }) => <blockquote style={{ borderLeft: `2px solid ${T.muted}`, paddingLeft: '16px', fontStyle: 'italic', color: T.muted, margin: '24px 0' }} {...props} />
-                      }}
-                    >
-                      {draft?.content || ''}
-                    </ReactMarkdown>
-                  ) : null}
-                </div>
-              )}
+                <>
+                  {/* Toolbar */}
+                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '2px', padding: '8px 12px', borderBottom: `0.5px solid ${T.border}`, background: '#fafaf8' }}>
+                    <button style={tb(false)} onClick={() => editor?.chain().focus().undo().run()} title="Undo"><Undo2 size={14} /></button>
+                    <button style={tb(false)} onClick={() => editor?.chain().focus().redo().run()} title="Redo"><Redo2 size={14} /></button>
+                    <div style={sep} />
+                    <button style={tb(editor?.isActive('heading', { level: 1 }))} onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} title="H1"><Heading1 size={14} /></button>
+                    <button style={tb(editor?.isActive('heading', { level: 2 }))} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} title="H2"><Heading2 size={14} /></button>
+                    <button style={tb(editor?.isActive('heading', { level: 3 }))} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} title="H3"><Heading3 size={14} /></button>
+                    <div style={sep} />
+                    <button style={tb(editor?.isActive('bold'))} onClick={() => editor?.chain().focus().toggleBold().run()} title="Bold"><Bold size={14} /></button>
+                    <button style={tb(editor?.isActive('italic'))} onClick={() => editor?.chain().focus().toggleItalic().run()} title="Italic"><Italic size={14} /></button>
+                    <button style={tb(editor?.isActive('underline'))} onClick={() => editor?.chain().focus().toggleUnderline().run()} title="Underline"><UnderlineIcon size={14} /></button>
+                    <button style={tb(editor?.isActive('strike'))} onClick={() => editor?.chain().focus().toggleStrike().run()} title="Strike"><Strikethrough size={14} /></button>
+                    <div style={sep} />
+                    <button style={tb(editor?.isActive({ textAlign: 'left' }))} onClick={() => editor?.chain().focus().setTextAlign('left').run()} title="Left"><AlignLeft size={14} /></button>
+                    <button style={tb(editor?.isActive({ textAlign: 'center' }))} onClick={() => editor?.chain().focus().setTextAlign('center').run()} title="Center"><AlignCenter size={14} /></button>
+                    <button style={tb(editor?.isActive({ textAlign: 'right' }))} onClick={() => editor?.chain().focus().setTextAlign('right').run()} title="Right"><AlignRight size={14} /></button>
+                    <button style={tb(editor?.isActive({ textAlign: 'justify' }))} onClick={() => editor?.chain().focus().setTextAlign('justify').run()} title="Justify"><AlignJustify size={14} /></button>
+                    <div style={sep} />
+                    <button style={tb(editor?.isActive('bulletList'))} onClick={() => editor?.chain().focus().toggleBulletList().run()} title="Bullet list"><List size={14} /></button>
+                    <button style={tb(editor?.isActive('orderedList'))} onClick={() => editor?.chain().focus().toggleOrderedList().run()} title="Numbered list"><ListOrdered size={14} /></button>
+                    <div style={sep} />
+                    <button style={tb(false)} onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert table"><Table size={14} /></button>
+                  </div>
+
+                  {/* Content */}
+                  <EditorContent editor={editor} />
+                </>
+              ) : null}
             </div>
 
             {/* Disclaimer */}
-            <div style={{
-              marginTop: '1.5rem', marginBottom: '3rem',
-              padding: '14px 18px',
-              border: `0.5px dashed ${T.border}`,
-              borderRadius: '6px',
-              display: 'flex', alignItems: 'center', gap: '10px',
-              opacity: 0.55,
-            }}>
+            <div style={{ marginTop: '1.5rem', marginBottom: '3rem', padding: '14px 18px', border: `0.5px dashed ${T.border}`, borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '10px', opacity: 0.55 }}>
               <AlertCircle style={{ width: '14px', height: '14px', color: T.muted, flexShrink: 0 }} />
               <p style={{ fontSize: '10px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: T.muted, margin: 0, lineHeight: 1.6 }}>
                 AI-generated draft. Review for technical accuracy before submission.
@@ -537,9 +285,26 @@ const DraftsView = ({ sources = [] }) => {
         )}
       </main>
 
-      <style>{`@keyframes jabari-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes jabari-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .jabari-editor { min-height: 600px; padding: 3rem 4rem; font-family: 'Lora', Georgia, serif; font-size: 15px; line-height: 1.85; color: #3d3d3a; outline: none; }
+        .jabari-editor h1 { font-size: 26px; font-weight: 700; margin: 24px 0 12px; color: #1a1a1a; font-family: 'DM Sans', system-ui, sans-serif; }
+        .jabari-editor h2 { font-size: 20px; font-weight: 600; margin: 20px 0 10px; color: #1a1a1a; font-family: 'DM Sans', system-ui, sans-serif; }
+        .jabari-editor h3 { font-size: 16px; font-weight: 600; margin: 16px 0 8px; color: #1a1a1a; font-family: 'DM Sans', system-ui, sans-serif; }
+        .jabari-editor p { margin-bottom: 14px; }
+        .jabari-editor ul { padding-left: 24px; margin-bottom: 14px; list-style-type: disc; }
+        .jabari-editor ol { padding-left: 24px; margin-bottom: 14px; list-style-type: decimal; }
+        .jabari-editor li { margin-bottom: 6px; }
+        .jabari-editor strong { font-weight: 700; color: #1a1a1a; }
+        .jabari-editor table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-family: 'DM Sans', system-ui, sans-serif; font-size: 13px; }
+        .jabari-editor th { background: rgba(26,26,26,0.04); font-weight: 600; padding: 10px 12px; border: 1px solid rgba(26,26,26,0.12); text-align: left; }
+        .jabari-editor td { padding: 10px 12px; border: 1px solid rgba(26,26,26,0.10); }
+        .jabari-editor blockquote { border-left: 2px solid #9a9a96; padding-left: 16px; font-style: italic; color: #6b6b68; margin: 20px 0; }
+        .jabari-editor .selectedCell { background: rgba(26,26,26,0.05); }
+      `}</style>
     </div>
   );
 };
 
 export default DraftsView;
+

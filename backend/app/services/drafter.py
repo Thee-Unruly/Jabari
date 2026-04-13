@@ -23,9 +23,21 @@ class JabariDrafter:
         if not doc:
             return {"error": "Document not found in vault."}
 
-        # Retrieve key chunks for context
-        chunks = db.query(DocumentChunk).filter(DocumentChunk.document_id == document_id).limit(20).all()
-        context = "\n\n".join([c.content for c in chunks])
+        # Retrieve key chunks for context (limit to 8 chunks to stay within token limits)
+        chunks = db.query(DocumentChunk).filter(DocumentChunk.document_id == document_id).limit(8).all()
+        
+        # Build context but cap at 3500 characters to avoid token limit (8000 TPM)
+        context = ""
+        max_context_size = 3500
+        for chunk in chunks:
+            potential_context = context + "\n\n" + chunk.content
+            if len(potential_context) > max_context_size:
+                break
+            context = potential_context
+        
+        # Fallback if context is too small
+        if not context.strip():
+            context = doc.summary or "No content available"
 
         prompts = {
             "cover_letter": "Write a formal, high-impact cover letter for this tender. Focus on professional excellence and alignment with the requirements.",

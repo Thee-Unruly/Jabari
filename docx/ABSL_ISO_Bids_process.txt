@@ -1,0 +1,82 @@
+BIDS PROCESS
+FEBRUARY 2025
+Agile Business Solutions Limited |1st Floor, Jumuia Place II, Lenana Rd | P.O. Box 76041 00508, Nairobi |
+  +254 723 929 999 & +254 733 290 655  
+www.agilebiz.co.ke  
+Document Control
+Document Approvers
+Document Change Approvals
+Process Definition: 
+TENDER AND BID PROCESS
+1. SUMMARY 	
+1.1. The tenders and bid process involves a standardized process of managing tenders and bids to ensure consistency, transparency and adherence to quality when responding to qualified tenders to ensure Agile submits competitive bids against the competition.
+2. PROCESS DEFINITION
+Tenders and Bids Process is the formal and structured process that Agile Business Solutions uses to solicit bids for projects within its scope of solutions 
+2.2. Some of the acronyms in use are:
+RFP: Request for Proposals
+RFQ: Request for Quotations
+EOI: Expression of Interest
+RFI – Request for Information
+ITT – Invitation to Tender
+TOR: Terms of Reference
+SLAs – Service Level Agreements
+T&Cs – Terms and Conditions
+BOQ – Bill of Quantities
+BOM – Bill of Materials
+3. PROCESS OBJECTIVES AND METRICS 
+3.1. Here’s a table with the key Tenders and Bids process objectives along with 
+KPIs and Targets:
+4. PROCESS OWNERS AND RESPONSIBLE PARTIES 
+	4.1. 	Here’s a table outlining process owners and their responsibilities in an Agile Tenders and Bids Process:
+5. PROCESS INPUTS 
+	5.1. 	The Inputs in the Tenders and Bids Process:
+Tender document, advert, RFP, RFQ, EOI Tenders & Bids TOR
+Assessment of TOR
+Business Analyst
+Requirements Check List
+Bid bond
+Manufacturer’s authorization form
+Customer and Competitor insights and budgets
+	5.2. 	Resources in the Tenders and Bids Process:
+Bid Bonds
+Administrative requirements: Laptops, Photocopy, Binding, Transport
+6. PROCESS STEPS
+Here are the key Tenders and Bids process steps:
+The Bids department receives the tender document, advert, RFP, RFQ EOI, etc. through the email sales@agilebiz.co.ke. The main sources of the bids are the internal sales team, MyGov, Partners etc.
+ The tender, RFP, RFQ, EOI etc. is allocated a bids executive who forms a bid committee comprising of account manager, technical representatives and other relevant stakeholders to evaluate if bid can be responded to or dropped through assessing the tender requirements (Statutory mandatory and Mandatory technical requirements).
+The bids executive creates a checklist of the mandatory requirements, together with tender submission forms, technical evaluation criteria, TOR and assignment of the interface parties.
+The bids executive outsources external supporting documents e.g., bid bond and manufacturer’s authorization form. The bid bond shall be requested from the finance department via email. This is to be done on the same day as bid documentation approval. All these documents are to be received in original printed copies 4 days prior to the submission date. Delays in getting any of these documents will be escalated to the Chief Commercial Officer within 24 hours.
+The Technical Proposal/Brochure is compiled by the Bid executive in tandem with the TOR while liaising with the technical team.
+The Bid Executive then compiles a complete draft tender response and submits it for review to the tender committee (account manager, technical representatives). The second level of check shall involve the management (CCO, COO and CEO)
+A fully reviewed signed off bid response is printed 1 day before submission by the bid's executive to allow the binding officer to have the final review before binding for submission.
+A well bound tender document fully sealed shall be submitted to the procuring entity at least an hour before closing time by a bid's executive or the office administrator.
+A soft copy of the tender response documentation shall be filed to the tender folder for reference purposes.
+Either the bids executive or the office administrator submits the tender and attends the tender opening shall record the names of the participating firms, quoted prices and report via email to sales@agilebiz.co.ke.
+Upon the evaluation of tenders by the procuring entity, the outcomes of the tender are communicated to the tenderer either via mail or physical letters addressed to the company. In case of a physical copy, the letter will be scanned and sent to sales@agilebiz.co.ke to allow all the stakeholders.
+If a tender is won, the Bids Executive writes an acceptance letter to the procuring entity with the approval of the company’s CEO and CCO.
+The acceptance letter is sent to the procuring entity through the official email channels, or it is delivered physically if so required.
+The bids executive then coordinates with the Chief Operations Officer to organize for an official internal kick-off meeting with the implementation team. At this stage, the project is handed over to the implementation team.
+If a bid is lost, the procuring entity communicates this information via email or a physical letter. In the case of a physical letter, it is scanned and shared to sales@agilebiz.co.ke.
+Controls for Information Security
+6.2 	All the tender documents related to a tender shall be handled with utmost confidentiality and shall not be exposed to any unauthorized parties.
+6.2.1	All printed tender-related documents, pages or sections shall be destroyed upon the end of their use or locked in the bid's locker out of reach to everyone not in the bids departments.
+6.2.2   All the prices quoted in the tender shall not be disclosed to anyone else, apart from the bids executive handling that tender.
+6.2.3	All tender documents shall be stored in OneDrive and the Auto- Save feature of the word-processing software shall be used.
+6.2.4 All tender documents whose notification of intention to award has been released shall be stored in the SharePoint folder.
+7. TYPICAL PROCESS OUTPUTS 
+7.1. 	The outputs of the Tenders and Bids process typically include the following:
+7.1.1 Bid documents, including,
+Tender documents,
+Proposals,
+EOIs,
+Supplier registration documents.
+Client Quotations, RFP, EOI
+8. RELATED RISKS & OPPORTUNITIES
+	8.1. 	The following risks are identified related to this process. 
+Incomplete/incorrect Bid Submission: 
+Underpricing or Overpricing 
+Non-compliance with Tender Requirements
+Delayed Bid Submission
+Resource Constraints (Staff/Time)
+Reputational Risk from Poor Proposal Quality
+8.2. 	Management may elect to conduct a formal risk assessment for any of these risks; the preferred method of risk assessment is indicated herein.  
