@@ -103,14 +103,14 @@ const DraftsView = ({ sources = [] }) => {
     const baseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
     try {
-      // If using Syncfusion editor, export from there
-      if (draftType === 'technical_proposal' && docEditorRef.current) {
+      // Export directly from Syncfusion editor for all draft types
+      if (docEditorRef.current) {
         docEditorRef.current.documentEditor.save(draft.title.replace(/ /g, '_') + '.docx', 'Docx');
         setIsExporting(false);
         return;
       }
 
-      // Otherwise, use the API endpoint
+      // Fallback to API endpoint
       const response = await axios.post(
         `${baseUrl}/export/docx`,
         { title: draft.title, content: draft.content },
@@ -468,7 +468,7 @@ const DraftsView = ({ sources = [] }) => {
                     {draft.error}
                   </p>
                 </div>
-              ) : draftType === 'technical_proposal' && draft ? (
+              ) : draft ? (
                 // ─── SYNCFUSION WORD EDITOR ─── 
                 <DocumentEditorContainerComponent
                   ref={docEditorRef}
