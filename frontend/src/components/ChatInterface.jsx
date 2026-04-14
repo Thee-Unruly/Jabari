@@ -537,6 +537,18 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
               </div>
             </div>
           )}
+
+          {/* New conversation header */}
+          {!viewingConversationId && (
+            <div style={{ height: '54px', borderBottom: `0.5px solid ${T.border}`, display: 'flex', alignItems: 'center', padding: '0 2rem', background: '#fff', justifyContent: 'space-between' }}>
+              <button onClick={backToHome} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', color: T.muted, fontSize: '13px', fontFamily: T.sans, padding: 0 }}>
+                <ChevronRight size={14} style={{ transform: 'rotate(180deg)' }} /> Home
+              </button>
+              <button onClick={() => { setMessages([]); setInput(''); setLiveSteps([]); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: T.muted, fontSize: '13px', fontFamily: T.sans, padding: 0 }}>
+                <Plus size={14} /> New Chat
+              </button>
+            </div>
+          )}
           <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '3rem 3.5rem 2rem', display: 'flex', flexDirection: 'column' }}>
             {messages.map((msg, idx) => <MessageBlock key={idx} msg={msg} />)}
             {isLoading && liveSteps.length > 0 && (
