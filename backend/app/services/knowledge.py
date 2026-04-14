@@ -230,48 +230,78 @@ class KnowledgeService:
             return {"success": False, "error": str(e)}
 
     @staticmethod
-    def get_benchmarks(query: str, db: Session, limit: int = 20) -> List[Dict]:
+    def get_benchmarks(query: str, db: Session, limit: int = 20, constraints: Dict = None) -> List[Dict]:
         """
         Uses Semantic Search if vectors are available, else keywords.
+        Applies structured constraints: status, amount range, date range,
+        buyer, category, and location.
         """
+        constraints = constraints or {}
+
+        def _apply_constraints(q):
+            """Apply all structured filters to a SQLAlchemy query."""
+            if constraints.get("status"):
+                q = q.filter(ProcurementRecord.status.ilike(f"%{constraints['status']}%"))
+            if constraints.get("min_amount") is not None:
+                q = q.filter(ProcurementRecord.amount >= constraints["min_amount"])
+            if constraints.get("max_amount") is not None:
+                q = q.filter(ProcurementRecord.amount <= constraints["max_amount"])
+            if constraints.get("date_from"):
+                q = q.filter(ProcurementRecord.date_published >= constraints["date_from"])
+            if constraints.get("date_to"):
+                q = q.filter(ProcurementRecord.date_published <= constraints["date_to"])
+            if constraints.get("buyer"):
+                q = q.filter(ProcurementRecord.buyer_name.ilike(f"%{constraints['buyer']}%"))
+            if constraints.get("category"):
+                q = q.filter(ProcurementRecord.category.ilike(f"%{constraints['category']}%"))
+            if constraints.get("location"):
+                q = q.filter(ProcurementRecord.location.ilike(f"%{constraints['location']}%"))
+            return q
+
+        def _serialize(results):
+            return [{
+                "ocid": r.ocid, "title": r.title, "buyer": r.buyer_name,
+                "amount": r.amount, "currency": r.currency,
+                "date": r.date_published.isoformat() if r.date_published else None,
+                "status": r.status, "category": r.category, "location": r.location
+            } for r in results]
+
         try:
             from app.services.vector_store import VectorStoreService
             vector = VectorStoreService.embed_text(query)
-            
-            results = db.query(ProcurementRecord).order_by(
+
+            base_query = _apply_constraints(db.query(ProcurementRecord))
+            results = base_query.order_by(
                 ProcurementRecord.embedding.l2_distance(vector)
             ).limit(limit).all()
-            
+
             if results:
-                return [{
-                    "ocid": r.ocid, "title": r.title, "buyer": r.buyer_name, 
-                    "amount": r.amount, "currency": r.currency, "date": r.date_published.isoformat() if r.date_published else None,
-                    "status": r.status, "category": r.category, "location": r.location
-                } for r in results]
+                return _serialize(results)
         except Exception as e:
             print(f"Semantic Search Fallback: {e}")
 
-        stop_words = {"who", "are", "the", "most", "successful", "winning", "for", "from", "at", "to", "in", "is", "a", "an", "and", "of", "with"}
-        keywords = [word.strip('?.,!').lower() for word in query.split() if word.lower() not in stop_words and len(word) > 2]
-        
+        # Keyword fallback
+        stop_words = {"who", "are", "the", "most", "successful", "winning", "for", "from",
+                      "at", "to", "in", "is", "a", "an", "and", "of", "with", "all", "give",
+                      "me", "show", "find", "list", "get"}
+        keywords = [word.strip('?.,!').lower() for word in query.split()
+                    if word.lower() not in stop_words and len(word) > 2]
+
+        base_query = _apply_constraints(db.query(ProcurementRecord))
+
         if not keywords:
-            term = f"%{query}%"
-            results = db.query(ProcurementRecord).filter(
-                ProcurementRecord.title.ilike(term) | ProcurementRecord.buyer_name.ilike(term)
-            ).order_by(ProcurementRecord.date_published.desc()).limit(limit).all()
+            results = base_query.order_by(
+                ProcurementRecord.date_published.desc()
+            ).limit(limit).all()
         else:
             filters = []
             for kw in keywords:
                 term = f"%{kw}%"
                 filters.append(ProcurementRecord.title.ilike(term))
                 filters.append(ProcurementRecord.buyer_name.ilike(term))
-            results = db.query(ProcurementRecord).filter(or_(*filters)).limit(limit).all()
+            results = base_query.filter(or_(*filters)).limit(limit).all()
 
-        return [{
-            "ocid": r.ocid, "title": r.title, "buyer": r.buyer_name, 
-            "amount": r.amount, "currency": r.currency, "date": r.date_published.isoformat() if r.date_published else None,
-            "status": r.status, "category": r.category, "location": r.location
-        } for r in results]
+        return _serialize(results)
 
     @staticmethod
     def sync_ocds_from_url(url: str) -> Dict[str, Any]:
