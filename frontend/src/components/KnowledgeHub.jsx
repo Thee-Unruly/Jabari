@@ -67,8 +67,7 @@ const KnowledgeHub = () => {
     const [insights, setInsights] = useState(null);
     const [rows, setRows] = useState([]);
     const [total, setTotal] = useState(0);
-    const [loading, setLoading] = useState(false);
-
+    const [loading, setLoading] = useState(false); const [isInitialLoad, setIsInitialLoad] = useState(true);
     // Filters
     const [query, setQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
@@ -90,8 +89,9 @@ const KnowledgeHub = () => {
     // ── Load initial data ──
     const loadBrowse = async (overrides = {}) => {
         setLoading(true);
+        const isInitial = overrides._initial === true;
         const p = {
-            page: 1, limit: 200,
+            page: 1, limit: isInitial ? 15 : 200,
             status: overrides.status ?? filterStatus,
             category: overrides.category ?? filterCategory,
             sort_by: overrides.sortBy ?? sortBy,
@@ -102,8 +102,11 @@ const KnowledgeHub = () => {
             const res = await axios.get(`${base}/knowledge/browse`, { params });
             setRows(res.data.records);
             setTotal(res.data.total);
-        } catch { /* ignore */ }
-        finally { setLoading(false); }
+            if (isInitial) setIsInitialLoad(true);
+            else setIsInitialLoad(false);
+        } catch (err) {
+            console.error('browse error', err);
+        } finally { setLoading(false); }
     };
 
     const loadFacets = async () => {
@@ -133,7 +136,7 @@ const KnowledgeHub = () => {
 
     useEffect(() => {
         loadStats();
-        loadBrowse();
+        loadBrowse({ _initial: true });
         loadFacets();
         fetchVectorizeStatus();
     }, []);
@@ -152,7 +155,8 @@ const KnowledgeHub = () => {
 
     // ── Search ──
     const handleSearch = async () => {
-        if (!query.trim()) { loadBrowse(); setAiBrief(null); return; }
+        if (!query.trim()) { loadBrowse({ _initial: true }); setAiBrief(null); return; }
+        setIsInitialLoad(false);
         setLoading(true);
         const isQuestion = /\b(who|what|how|why|where|compare|list|show|find|give|all)\b/i.test(query);
         if (isQuestion) {
@@ -180,6 +184,7 @@ const KnowledgeHub = () => {
 
     // ── Filter change ──
     const applyFilter = (field, val) => {
+        setIsInitialLoad(false);
         if (field === 'status') { setFilterStatus(val); if (!query.trim()) loadBrowse({ status: val }); }
         if (field === 'category') { setFilterCategory(val); if (!query.trim()) loadBrowse({ category: val }); }
     };
@@ -314,7 +319,7 @@ const KnowledgeHub = () => {
                             style={{ width: '100%', padding: '9px 38px 9px 34px', border: `0.5px solid ${T.border}`, borderRadius: '8px', background: T.cream, fontSize: '13px', outline: 'none', boxSizing: 'border-box', fontFamily: T.sans, color: T.ink }}
                         />
                         {query && (
-                            <button onClick={() => { setQuery(''); setAiBrief(null); loadBrowse(); }} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.faint, display: 'flex' }}>
+                            <button onClick={() => { setQuery(''); setAiBrief(null); loadBrowse({ _initial: true }); }} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.faint, display: 'flex' }}>
                                 <X size={12} />
                             </button>
                         )}
@@ -349,7 +354,10 @@ const KnowledgeHub = () => {
                     </button>
 
                     <span style={{ fontSize: '11px', color: T.faint, marginLeft: 'auto', flexShrink: 0 }}>
-                        {total.toLocaleString()} records
+                        {isInitialLoad
+                            ? `Showing first ${rows.length} of ${total.toLocaleString()} records — search or filter to explore`
+                            : `${rows.length.toLocaleString()} result${rows.length !== 1 ? 's' : ''}`
+                        }
                     </span>
                 </div>
 

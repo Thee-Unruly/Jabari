@@ -238,7 +238,7 @@ def browse_knowledge(
     db: Session = Depends(get_db)
 ):
     """Paginated, filterable browse of all procurement records for the table view."""
-    from sqlalchemy import asc, desc, nullslast
+    from sqlalchemy import asc, desc, nulls_last
     q = db.query(ProcurementRecord)
     if status:
         q = q.filter(ProcurementRecord.status.ilike(f"%{status}%"))
@@ -251,7 +251,7 @@ def browse_knowledge(
         "buyer": ProcurementRecord.buyer_name,
     }
     col = col_map.get(sort_by, ProcurementRecord.amount)
-    order = nullslast(desc(col)) if sort_dir != "asc" else nullslast(asc(col))
+    order = nulls_last(desc(col)) if sort_dir != "asc" else nulls_last(asc(col))
     q = q.order_by(order)
     total = q.count()
     records = q.offset((page - 1) * limit).limit(limit).all()
