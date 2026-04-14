@@ -227,6 +227,72 @@ async def get_knowledge_stats(db: Session = Depends(get_db)):
     """Fast record counting."""
     return KnowledgeService.get_stats(db)
 
+@app.get("/knowledge/browse")
+def browse_knowledge(
+    page: int = 1,
+    limit: int = 100,
+    status: str = None,
+    category: str = None,
+    sort_by: str = "amount",
+    sort_dir: str = "desc",
+    db: Session = Depends(get_db)
+):
+    """Paginated, filterable browse of all procurement records for the table view."""
+    from sqlalchemy import asc, desc, nullslast
+    q = db.query(ProcurementRecord)
+    if status:
+        q = q.filter(ProcurementRecord.status.ilike(f"%{status}%"))
+    if category:
+        q = q.filter(ProcurementRecord.category.ilike(f"%{category}%"))
+    col_map = {
+        "amount": ProcurementRecord.amount,
+        "date": ProcurementRecord.date_published,
+        "title": ProcurementRecord.title,
+        "buyer": ProcurementRecord.buyer_name,
+    }
+    col = col_map.get(sort_by, ProcurementRecord.amount)
+    order = nullslast(desc(col)) if sort_dir != "asc" else nullslast(asc(col))
+    q = q.order_by(order)
+    total = q.count()
+    records = q.offset((page - 1) * limit).limit(limit).all()
+    return {
+        "total": total,
+        "page": page,
+        "records": [
+            {
+                "id": r.id,
+                "ocid": r.ocid,
+                "title": r.title,
+                "buyer": r.buyer_name,
+                "amount": r.amount,
+                "currency": r.currency or "KES",
+                "status": r.status,
+                "category": r.category,
+                "location": r.location,
+                "date": r.date_published.strftime("%d %b %Y") if r.date_published else None,
+            }
+            for r in records
+        ],
+    }
+
+@app.get("/knowledge/facets")
+def knowledge_facets(db: Session = Depends(get_db)):
+    """Returns distinct status and category values for filter dropdowns."""
+    from sqlalchemy import distinct
+    statuses = [
+        r[0] for r in db.query(distinct(ProcurementRecord.status))
+        .filter(ProcurementRecord.status.isnot(None))
+        .order_by(ProcurementRecord.status)
+        .limit(30).all()
+    ]
+    categories = [
+        r[0] for r in db.query(distinct(ProcurementRecord.category))
+        .filter(ProcurementRecord.category.isnot(None))
+        .order_by(ProcurementRecord.category)
+        .limit(50).all()
+    ]
+    return {"statuses": statuses, "categories": categories}
+
 @app.post("/knowledge/ingest")
 async def ingest_knowledge_base(file: UploadFile = File(...)):
     """
