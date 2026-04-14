@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 import shutil
 from typing import Any
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -198,6 +198,24 @@ async def reset_knowledge_base():
     if not result.get("success"):
         raise HTTPException(status_code=500, detail=result.get("error"))
     return {"status": "success", "message": result.get("message")}
+
+@app.post("/knowledge/vectorize")
+async def vectorize_knowledge_base(background_tasks: BackgroundTasks):
+    """
+    Generates embeddings for all ProcurementRecords that are missing vectors.
+    Run this once after a bulk sync to enable fast semantic search.
+    """
+    unembedded = KnowledgeService.count_unembedded()
+    if unembedded == 0:
+        return {"status": "ok", "message": "All records are already vectorized.", "pending": 0}
+    background_tasks.add_task(KnowledgeService.vectorize_missing)
+    return {"status": "started", "message": f"Vectorizing {unembedded} records in background.", "pending": unembedded}
+
+@app.get("/knowledge/vectorize/status")
+async def vectorize_status():
+    """Returns the number of records still awaiting vectorization."""
+    pending = KnowledgeService.count_unembedded()
+    return {"pending": pending, "done": pending == 0}
 
 @app.get("/knowledge/insights")
 async def get_knowledge_insights(db: Session = Depends(get_db)):

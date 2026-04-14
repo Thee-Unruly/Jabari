@@ -304,6 +304,52 @@ class KnowledgeService:
         return _serialize(results)
 
     @staticmethod
+    def vectorize_missing(batch_size: int = 64) -> Dict[str, Any]:
+        """
+        Finds all ProcurementRecords with NULL embeddings and generates vectors
+        for them in batches. Run this once after a bulk sync/ingest to enable
+        fast semantic search.
+        """
+        from app.services.vector_store import VectorStoreService
+        db = SessionLocal()
+        total_done = 0
+        try:
+            while True:
+                batch = (
+                    db.query(ProcurementRecord)
+                    .filter(ProcurementRecord.embedding == None)  # noqa: E711
+                    .limit(batch_size)
+                    .all()
+                )
+                if not batch:
+                    break
+
+                titles = [(r.title or "") + " " + (r.description or "")[:120] for r in batch]
+                embeddings = VectorStoreService.embed_text(titles)
+                for record, emb in zip(batch, embeddings):
+                    record.embedding = emb
+
+                db.commit()
+                total_done += len(batch)
+                print(f"--- VECTORIZE: {total_done} records embedded so far ---")
+
+            return {"success": True, "vectorized": total_done}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+        finally:
+            db.close()
+
+    @staticmethod
+    def count_unembedded() -> int:
+        """Returns the number of records still missing embeddings."""
+        db = SessionLocal()
+        try:
+            return db.query(ProcurementRecord).filter(ProcurementRecord.embedding == None).count()  # noqa: E711
+        finally:
+            db.close()
+
+    @staticmethod
     def sync_ocds_from_url(url: str) -> Dict[str, Any]:
         """
         Live sync from OCDS data publication URL.

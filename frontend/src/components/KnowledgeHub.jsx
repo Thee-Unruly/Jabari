@@ -1,27 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  Search, Globe, TrendingUp, DollarSign, 
-  MapPin, Calendar, ExternalLink, Loader2,
-  FileText, ShieldCheck, Upload, Database, 
-  CheckCircle2, AlertCircle, RefreshCw, Trash2,
-  Sparkles, Brain, X, ChevronRight
+import {
+    Search, Globe, TrendingUp, DollarSign,
+    MapPin, Calendar, ExternalLink, Loader2,
+    FileText, ShieldCheck, Upload, Database,
+    CheckCircle2, AlertCircle, RefreshCw, Trash2,
+    Sparkles, Brain, X, ChevronRight
 } from 'lucide-react';
 
 /* ─── Jabari design tokens ─── */
 const T = {
-  cream: '#F5F2ED',
-  ink: '#1a1a1a',
-  ink2: '#3d3d3a',
-  muted: '#6b6b68',
-  faint: '#9a9a96',
-  border: 'rgba(26,26,26,0.10)',
-  surface: 'rgba(26,26,26,0.03)',
-  surface2: 'rgba(26,26,26,0.06)',
-  accent: '#B8860B', // Dark Goldenrod
-  success: '#10b981',
-  serif: "'Lora', Georgia, serif",
-  sans: "'DM Sans', system-ui, sans-serif",
+    cream: '#F5F2ED',
+    ink: '#1a1a1a',
+    ink2: '#3d3d3a',
+    muted: '#6b6b68',
+    faint: '#9a9a96',
+    border: 'rgba(26,26,26,0.10)',
+    surface: 'rgba(26,26,26,0.03)',
+    surface2: 'rgba(26,26,26,0.06)',
+    accent: '#B8860B', // Dark Goldenrod
+    success: '#10b981',
+    serif: "'Lora', Georgia, serif",
+    sans: "'DM Sans', system-ui, sans-serif",
 };
 
 const KnowledgeHub = () => {
@@ -32,7 +32,7 @@ const KnowledgeHub = () => {
     const [insights, setInsights] = useState(null);
     const [uploadStatus, setUploadStatus] = useState({ state: 'idle', message: '', details: null });
     const [isUploading, setIsUploading] = useState(false);
-    
+
     // Neural States
     const [aiBrief, setAiBrief] = useState(null);
     const [isThinking, setIsThinking] = useState(false);
@@ -58,12 +58,12 @@ const KnowledgeHub = () => {
 
     const handleSearch = async () => {
         if (!query.trim()) return;
-        
+
         setIsSearching(true);
         // We don't clear results/aiBrief manually so they stay in view while thinking
-        
+
         const isQuestion = ["who", "what", "how", "compare", "list", "why", "where"].some(q => query.toLowerCase().includes(q));
-        
+
         if (isQuestion) {
             setIsThinking(true);
             axios.post(`${baseUrl}/assistant/ask`, { question: query })
@@ -102,6 +102,39 @@ const KnowledgeHub = () => {
         }
     };
 
+    const [vectorizeStatus, setVectorizeStatus] = useState({ pending: null, running: false });
+
+    const fetchVectorizeStatus = async () => {
+        try {
+            const res = await axios.get(`${baseUrl}/knowledge/vectorize/status`);
+            setVectorizeStatus(v => ({ ...v, pending: res.data.pending }));
+        } catch { }
+    };
+
+    useEffect(() => { fetchVectorizeStatus(); }, []);
+
+    // Poll while vectorization is running
+    useEffect(() => {
+        if (!vectorizeStatus.running) return;
+        const interval = setInterval(async () => {
+            await fetchVectorizeStatus();
+            if (vectorizeStatus.pending === 0) {
+                setVectorizeStatus(v => ({ ...v, running: false }));
+                clearInterval(interval);
+            }
+        }, 3000);
+        return () => clearInterval(interval);
+    }, [vectorizeStatus.running]);
+
+    const handleVectorize = async () => {
+        setVectorizeStatus(v => ({ ...v, running: true }));
+        try {
+            await axios.post(`${baseUrl}/knowledge/vectorize`);
+        } catch (err) {
+            setVectorizeStatus(v => ({ ...v, running: false }));
+        }
+    };
+
     const handleSync = async () => {
         setIsUploading(true);
         setUploadStatus({ state: 'loading', message: 'Syncing OCDS Portal...' });
@@ -109,6 +142,7 @@ const KnowledgeHub = () => {
             const res = await axios.post(`${baseUrl}/knowledge/sync`);
             setUploadStatus({ state: 'success', message: 'Sync Complete', details: `${res.data.indexed} records synchronized.` });
             fetchStats();
+            fetchVectorizeStatus();
         } catch (err) {
             setUploadStatus({ state: 'error', message: 'Sync Failed', details: 'Endpoint error' });
         } finally {
@@ -118,7 +152,7 @@ const KnowledgeHub = () => {
 
     return (
         <div style={{ display: 'flex', height: '100%', background: T.cream, fontFamily: T.sans, overflow: 'hidden' }}>
-            
+
             {/* ── COLUMN 1: SYSTEM (LEFT) ── */}
             <aside style={{ width: '280px', borderRight: `0.5px solid ${T.border}`, padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', flexShrink: 0 }}>
                 <div>
@@ -138,6 +172,13 @@ const KnowledgeHub = () => {
                     <label style={{ width: '100%', padding: '10px', border: `0.5px solid ${T.border}`, background: '#fff', borderRadius: '8px', fontSize: '11px', fontWeight: 600, textAlign: 'center', cursor: 'pointer' }}>
                         Ingest CSV <input type="file" style={{ display: 'none' }} onChange={handleFileUpload} />
                     </label>
+                    <button
+                        onClick={handleVectorize}
+                        disabled={vectorizeStatus.running || vectorizeStatus.pending === 0}
+                        style={{ width: '100%', padding: '10px', background: vectorizeStatus.pending === 0 ? T.surface2 : T.accent, color: vectorizeStatus.pending === 0 ? T.faint : '#fff', borderRadius: '8px', fontSize: '11px', fontWeight: 600, border: 'none', cursor: vectorizeStatus.pending === 0 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                        {vectorizeStatus.running ? <><Loader2 size={13} className="animate-spin" /> Vectorizing...</> : vectorizeStatus.pending === 0 ? '✓ Vectors Ready' : `Vectorize (${vectorizeStatus.pending ?? '…'} pending)`}
+                    </button>
                 </div>
             </aside>
 
@@ -204,18 +245,18 @@ const KnowledgeHub = () => {
 
             {/* ── COLUMN 3: NEURAL SIDEBAR (RIGHT) ── */}
             <aside style={{ width: '450px', borderLeft: `0.5px solid ${T.border}`, display: 'flex', flexDirection: 'column', background: T.cream, flexShrink: 0 }}>
-                
+
                 {/* Search Input Box */}
                 <div style={{ padding: '2rem', borderBottom: `0.5px solid ${T.border}`, background: '#fff' }}>
                     <div style={{ position: 'relative' }}>
-                        <input 
+                        <input
                             value={query}
                             onChange={e => setQuery(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleSearch()}
                             placeholder="Ask or search tenders..."
-                            style={{ 
-                                width: '100%', padding: '12px 45px 12px 18px', 
-                                border: `1px solid ${T.border}`, borderRadius: '12px', 
+                            style={{
+                                width: '100%', padding: '12px 45px 12px 18px',
+                                border: `1px solid ${T.border}`, borderRadius: '12px',
                                 background: T.cream, fontSize: '14px', outline: 'none'
                             }}
                         />
@@ -227,22 +268,22 @@ const KnowledgeHub = () => {
 
                 {/* Intelligence Feed */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    
+
                     {!aiBrief && results.length === 0 && !isSearching && !isThinking ? (
                         <div style={{ textAlign: 'center', marginTop: '4rem', opacity: 0.5 }}>
                             <Brain size={48} style={{ margin: '0 auto 1rem' }} />
-                            <p style={{ fontSize: '13px' }}>Neural Assistant ready.<br/>Ask a question to start market analysis.</p>
+                            <p style={{ fontSize: '13px' }}>Neural Assistant ready.<br />Ask a question to start market analysis.</p>
                         </div>
                     ) : null}
 
                     {/* AI Brief Section */}
                     {aiBrief && (
                         <div style={{ background: '#fff', border: `1px solid ${T.accent}`, borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 12px rgba(184, 134, 11, 0.1)' }}>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', color: T.accent }}>
-                               <Brain size={16} />
-                               <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Intelligence Brief</span>
-                           </div>
-                           <div style={{ fontSize: '14px', lineHeight: 1.6, color: T.ink, fontFamily: T.serif, whiteSpace: 'pre-wrap' }}>{aiBrief}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', color: T.accent }}>
+                                <Brain size={16} />
+                                <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Intelligence Brief</span>
+                            </div>
+                            <div style={{ fontSize: '14px', lineHeight: 1.6, color: T.ink, fontFamily: T.serif, whiteSpace: 'pre-wrap' }}>{aiBrief}</div>
                         </div>
                     )}
 
@@ -266,7 +307,7 @@ const KnowledgeHub = () => {
 
                 {(results.length > 0 || aiBrief) && (
                     <div style={{ padding: '1.5rem', background: '#fff', borderTop: `0.5px solid ${T.border}` }}>
-                        <button onClick={() => {setQuery(''); setResults([]); setAiBrief(null);}} style={{ width: '100%', padding: '10px', border: `0.5px solid ${T.border}`, borderRadius: '8px', fontSize: '11px', fontWeight: 700, color: T.muted, cursor: 'pointer' }}>CLEAR RESULTS</button>
+                        <button onClick={() => { setQuery(''); setResults([]); setAiBrief(null); }} style={{ width: '100%', padding: '10px', border: `0.5px solid ${T.border}`, borderRadius: '8px', fontSize: '11px', fontWeight: 700, color: T.muted, cursor: 'pointer' }}>CLEAR RESULTS</button>
                     </div>
                 )}
             </aside>
