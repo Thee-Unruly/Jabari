@@ -39,7 +39,6 @@ const App = () => {
   const [view, setView] = useState('vault');
   const [activeTab, setActiveTab] = useState('analysis');
   const [vaultTab, setVaultTab] = useState('overview');
-  const [vaultQuery, setVaultQuery] = useState('');
   const [showUpload, setShowUpload] = useState(false);
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [initialQuestion, setInitialQuestion] = useState('');
@@ -278,31 +277,20 @@ const App = () => {
                   </div>
                 )}
 
-                {/* ── Query Box ── */}
-                <div style={{ maxWidth: '740px', margin: '0 auto 2rem', background: T.cream, borderRadius: '14px', padding: '1.25rem 1.5rem', border: `0.5px solid ${T.border}` }}>
-                  {activeTender && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: '6px', background: T.surface2, border: `0.5px solid ${T.border}`, fontSize: '11px', color: T.ink2, marginBottom: '10px' }}>
-                      <Folder size={11} style={{ color: T.muted }} /> {activeTender.name}
-                    </div>
-                  )}
-                  <textarea
-                    value={vaultQuery}
-                    onChange={e => setVaultQuery(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (vaultQuery.trim()) { setInitialQuestion(vaultQuery); setVaultQuery(''); setView('assistant'); } } }}
-                    placeholder="Ask anything about your documents..."
-                    rows={2}
-                    style={{ width: '100%', border: 'none', background: 'transparent', resize: 'none', fontSize: '14px', color: T.ink, fontFamily: T.sans, outline: 'none', lineHeight: 1.6, boxSizing: 'border-box' }}
-                  />
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.faint, display: 'flex' }}><Upload size={15} /></button>
-                      <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.faint, display: 'flex' }}><Database size={15} /></button>
-                    </div>
-                    <button onClick={() => { if (vaultQuery.trim()) { setInitialQuestion(vaultQuery); setVaultQuery(''); setView('assistant'); } }}
-                      style={{ width: '34px', height: '34px', borderRadius: '8px', background: vaultQuery.trim() ? T.ink : T.surface2, border: 'none', cursor: vaultQuery.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Sparkles size={14} style={{ color: vaultQuery.trim() ? '#fff' : T.faint }} />
-                    </button>
+                {/* ── Assistant entry banner ── */}
+                <div style={{ maxWidth: '740px', margin: '0 auto 2.5rem', borderRadius: '12px', border: `0.5px solid ${T.border}`, background: T.cream, padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 500, color: T.ink, fontFamily: T.sans }}>Ask Jabari about your files</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: T.muted, fontFamily: T.sans, lineHeight: 1.5 }}>
+                      {activeTender
+                        ? <>Searching within <span style={{ fontWeight: 500, color: T.ink2 }}>{activeTender.name}</span> — open the Assistant to ask cross-document questions or explore market intelligence.</>
+                        : 'Open the Assistant to ask questions across all vaulted documents, compare tenders, or explore market intelligence.'}
+                    </p>
                   </div>
+                  <button onClick={() => setView('assistant')}
+                    style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '9px 18px', background: T.ink, color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', fontFamily: T.sans, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                    <MessageCircle size={14} /> Open Assistant
+                  </button>
                 </div>
 
                 {/* ── Quick Actions ── */}
