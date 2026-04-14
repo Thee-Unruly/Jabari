@@ -228,6 +228,7 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
   const [viewingConversationId, setViewingConversationId] = useState(null);
   const [viewingConversationTitle, setViewingConversationTitle] = useState('');
   const scrollRef = useRef(null);
+  const currentThreadIdRef = useRef(null);
 
   const isHome = messages.length === 0 && !isLoading && !viewingConversationId;
 
@@ -258,27 +259,39 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
   const filteredSources = sources.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
   const filteredTenders = tenders.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const saveRecent = (question, msgHistory) => {
+  // threadId: pass existing id to update that thread; omit/null to create a new one.
+  // Returns the thread id (new or existing) so the caller can track it.
+  const saveRecent = (question, msgHistory, threadId) => {
     try {
-      // Read fresh from localStorage to avoid stale closure
       const stored = JSON.parse(localStorage.getItem('jabari_recent_chats') || '[]');
-      const id = Date.now();
-      const entry = {
-        id,
-        title: question.length > 60 ? question.slice(0, 57) + '\u2026' : question,
-        date: 'Today',
-        fullQuestion: question,
-        messages: msgHistory,
-      };
-      const updated = [entry, ...stored.slice(0, 8)];
+      let id;
+      let updated;
+      if (threadId) {
+        const idx = stored.findIndex(e => e.id === threadId);
+        if (idx >= 0) {
+          // Update existing entry — keep original title, just refresh messages
+          const entry = { ...stored[idx], messages: msgHistory, date: 'Today' };
+          updated = [entry, ...stored.filter((_, i) => i !== idx).slice(0, 8)];
+          id = threadId;
+        } else {
+          // Thread id no longer in storage — create fresh
+          id = Date.now();
+          const entry = { id, title: question.length > 60 ? question.slice(0, 57) + '\u2026' : question, date: 'Today', fullQuestion: question, messages: msgHistory };
+          updated = [entry, ...stored.slice(0, 8)];
+        }
+      } else {
+        id = Date.now();
+        const entry = { id, title: question.length > 60 ? question.slice(0, 57) + '\u2026' : question, date: 'Today', fullQuestion: question, messages: msgHistory };
+        updated = [entry, ...stored.slice(0, 8)];
+      }
       setRecentChats(updated);
       localStorage.setItem('jabari_recent_chats', JSON.stringify(updated));
-    } catch { }
+      return id;
+    } catch { return null; }
   };
 
   const loadConversation = (chatId) => {
     try {
-      // Read fresh from localStorage — state may be stale on first load
       const stored = JSON.parse(localStorage.getItem('jabari_recent_chats') || '[]');
       const chat = stored.find(c => c.id === chatId);
       if (chat?.messages?.length > 0) {
@@ -287,10 +300,10 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
         setViewingConversationTitle(chat.fullQuestion || chat.title);
         setInput('');
         setLiveSteps([]);
-      } else if (chat) {
-        // Older entry saved before messages were stored — re-run the question
-        handleSendWith(chat.fullQuestion || chat.title);
+        // Subsequent messages in this view will update the same thread entry
+        currentThreadIdRef.current = chatId;
       }
+      // If no messages saved, silently ignore — do NOT re-run the question
     } catch { }
   };
 
@@ -299,6 +312,7 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
     setViewingConversationId(null);
     setViewingConversationTitle('');
     setInput('');
+    currentThreadIdRef.current = null;
   };
 
   const handleSend = async () => {
@@ -310,6 +324,8 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
 
   const handleSendWith = async (question) => {
     if (!question || isLoading) return;
+    // Starting a brand-new chat (home screen) → fresh thread
+    if (messages.length === 0) currentThreadIdRef.current = null;
     // Clear viewing state when asking a new question
     setViewingConversationId(null);
     setViewingConversationTitle('');
@@ -362,7 +378,8 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
       const aiMsg = { role: 'assistant', content: response.data.answer, citations: response.data.citations, steps: finalSteps };
       setMessages(prev => {
         const next = [...prev, aiMsg];
-        saveRecent(question, next);
+        const newId = saveRecent(question, next, currentThreadIdRef.current);
+        if (!currentThreadIdRef.current && newId) currentThreadIdRef.current = newId;
         return next;
       });
     } catch {
@@ -370,7 +387,8 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
       const errMsg = { role: 'assistant', content: 'Connection error — please try again.', steps: [...steps] };
       setMessages(prev => {
         const next = [...prev, errMsg];
-        saveRecent(question, next);
+        const newId = saveRecent(question, next, currentThreadIdRef.current);
+        if (!currentThreadIdRef.current && newId) currentThreadIdRef.current = newId;
         return next;
       });
     } finally {
