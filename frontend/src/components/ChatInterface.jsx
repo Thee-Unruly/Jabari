@@ -260,29 +260,38 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
 
   const saveRecent = (question, msgHistory) => {
     try {
+      // Read fresh from localStorage to avoid stale closure
+      const stored = JSON.parse(localStorage.getItem('jabari_recent_chats') || '[]');
       const id = Date.now();
       const entry = {
         id,
-        title: question.length > 60 ? question.slice(0, 57) + '…' : question,
+        title: question.length > 60 ? question.slice(0, 57) + '\u2026' : question,
         date: 'Today',
         fullQuestion: question,
         messages: msgHistory,
       };
-      const updated = [entry, ...recentChats.filter(c => c.id !== id).slice(0, 8)];
+      const updated = [entry, ...stored.slice(0, 8)];
       setRecentChats(updated);
       localStorage.setItem('jabari_recent_chats', JSON.stringify(updated));
     } catch { }
   };
 
   const loadConversation = (chatId) => {
-    const chat = recentChats.find(c => c.id === chatId);
-    if (chat && chat.messages) {
-      setMessages(chat.messages);
-      setViewingConversationId(chatId);
-      setViewingConversationTitle(chat.fullQuestion);
-      setInput('');
-      setLiveSteps([]);
-    }
+    try {
+      // Read fresh from localStorage — state may be stale on first load
+      const stored = JSON.parse(localStorage.getItem('jabari_recent_chats') || '[]');
+      const chat = stored.find(c => c.id === chatId);
+      if (chat?.messages?.length > 0) {
+        setMessages(chat.messages);
+        setViewingConversationId(chatId);
+        setViewingConversationTitle(chat.fullQuestion || chat.title);
+        setInput('');
+        setLiveSteps([]);
+      } else if (chat) {
+        // Older entry saved before messages were stored — re-run the question
+        handleSendWith(chat.fullQuestion || chat.title);
+      }
+    } catch { }
   };
 
   const backToHome = () => {
@@ -350,20 +359,23 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
       const response = await axios.post(`${base}/chat`, { message: question, document_id: groundedDocId, tender_id: groundedTenderId });
       updateLast({ status: 'done' });
       const finalSteps = [...steps];
-      setMessages(prev => [...prev, { role: 'assistant', content: response.data.answer, citations: response.data.citations, steps: finalSteps }]);
+      const aiMsg = { role: 'assistant', content: response.data.answer, citations: response.data.citations, steps: finalSteps };
+      setMessages(prev => {
+        const next = [...prev, aiMsg];
+        saveRecent(question, next);
+        return next;
+      });
     } catch {
       updateLast({ status: 'done' });
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Connection error — please try again.', steps: [...steps] }]);
+      const errMsg = { role: 'assistant', content: 'Connection error — please try again.', steps: [...steps] };
+      setMessages(prev => {
+        const next = [...prev, errMsg];
+        saveRecent(question, next);
+        return next;
+      });
     } finally {
       setLiveSteps([]);
       setIsLoading(false);
-      // Save conversation after completion
-      setTimeout(() => {
-        setMessages(prev => {
-          saveRecent(question, prev);
-          return prev;
-        });
-      }, 100);
     }
   };
 
