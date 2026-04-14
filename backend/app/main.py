@@ -38,6 +38,7 @@ class TenderCreate(BaseModel):
 class DraftRequest(BaseModel):
     document_id: int
     draft_type: str = "technical_proposal"
+    use_vault_reuse: bool = True
 
 class ExportRequest(BaseModel):
     title: str
@@ -139,8 +140,15 @@ async def list_sources(db: Session = Depends(get_db)):
 async def generate_draft(request: DraftRequest, db: Session = Depends(get_db)):
     """
     Drafting Endpoint: Synthesizes professional bidding artifacts.
+    When use_vault_reuse=True (default), past proposals in the vault are searched
+    for semantically similar sections that are adapted into the new draft.
     """
-    return drafter.generate_draft(db, request.document_id, request.draft_type)
+    return drafter.generate_draft(
+        db,
+        request.document_id,
+        request.draft_type,
+        request.use_vault_reuse,
+    )
 
 @app.post("/export/docx")
 async def export_draft_docx(request: ExportRequest):
