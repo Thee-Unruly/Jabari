@@ -225,9 +225,11 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
   const [liveSteps, setLiveSteps] = useState([]);
   const [liveCollapsed, setLiveCollapsed] = useState(false);
   const [recentChats, setRecentChats] = useState([]);
+  const [viewingConversationId, setViewingConversationId] = useState(null);
+  const [viewingConversationTitle, setViewingConversationTitle] = useState('');
   const scrollRef = useRef(null);
 
-  const isHome = messages.length === 0 && !isLoading;
+  const isHome = messages.length === 0 && !isLoading && !viewingConversationId;
 
   useEffect(() => {
     const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
@@ -256,17 +258,38 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
   const filteredSources = sources.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
   const filteredTenders = tenders.filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const saveRecent = (question) => {
+  const saveRecent = (question, msgHistory) => {
     try {
+      const id = Date.now();
       const entry = {
-        id: Date.now(),
+        id,
         title: question.length > 60 ? question.slice(0, 57) + '…' : question,
         date: 'Today',
+        fullQuestion: question,
+        messages: msgHistory,
       };
-      const updated = [entry, ...recentChats.slice(0, 9)];
+      const updated = [entry, ...recentChats.filter(c => c.id !== id).slice(0, 8)];
       setRecentChats(updated);
       localStorage.setItem('jabari_recent_chats', JSON.stringify(updated));
     } catch { }
+  };
+
+  const loadConversation = (chatId) => {
+    const chat = recentChats.find(c => c.id === chatId);
+    if (chat && chat.messages) {
+      setMessages(chat.messages);
+      setViewingConversationId(chatId);
+      setViewingConversationTitle(chat.fullQuestion);
+      setInput('');
+      setLiveSteps([]);
+    }
+  };
+
+  const backToHome = () => {
+    setMessages([]);
+    setViewingConversationId(null);
+    setViewingConversationTitle('');
+    setInput('');
   };
 
   const handleSend = async () => {
@@ -278,7 +301,9 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
 
   const handleSendWith = async (question) => {
     if (!question || isLoading) return;
-    saveRecent(question);
+    // Clear viewing state when asking a new question
+    setViewingConversationId(null);
+    setViewingConversationTitle('');
     setMessages(prev => [...prev, { role: 'user', content: question, attachment: activeDocName }]);
     setInput('');
     setIsLoading(true);
@@ -332,6 +357,13 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
     } finally {
       setLiveSteps([]);
       setIsLoading(false);
+      // Save conversation after completion
+      setTimeout(() => {
+        setMessages(prev => {
+          saveRecent(question, prev);
+          return prev;
+        });
+      }, 100);
     }
   };
 
@@ -441,7 +473,7 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
                 <p style={{ fontSize: '13px', fontWeight: 500, color: T.muted, marginBottom: '12px', fontFamily: T.sans }}>Recent</p>
                 <div>
                   {recentChats.map((chat, i) => (
-                    <div key={chat.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 6px', borderTop: `0.5px solid ${T.border}`, cursor: 'pointer', borderRadius: '4px', transition: 'background 0.1s' }}
+                    <div key={chat.id} onClick={() => loadConversation(chat.id)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 6px', borderTop: `0.5px solid ${T.border}`, cursor: 'pointer', borderRadius: '4px', transition: 'background 0.1s' }}
                       onMouseOver={e => e.currentTarget.style.background = T.surface}
                       onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
@@ -463,6 +495,18 @@ const ChatInterface = ({ documentId, tenderId, tenderName, initialSources = [], 
       {/* ── CONVERSATION VIEW ── */}
       {!isHome && (
         <>
+          {/* Conversation header with back button */}
+          {viewingConversationId && (
+            <div style={{ height: '54px', borderBottom: `0.5px solid ${T.border}`, display: 'flex', alignItems: 'center', padding: '0 2rem', background: '#fff' }}>
+              <button onClick={backToHome} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', color: T.muted, fontSize: '13px', fontFamily: T.sans }}>
+                <ChevronRight size={14} style={{ transform: 'rotate(180deg)' }} /> Back
+              </button>
+              <div style={{ flex: 1, marginLeft: '20px', display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <span style={{ fontSize: '13px', color: T.muted }}>Reviewing</span>
+                <span style={{ fontSize: '13px', color: T.ink, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{viewingConversationTitle}</span>
+              </div>
+            </div>
+          )}
           <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '3rem 3.5rem 2rem', display: 'flex', flexDirection: 'column' }}>
             {messages.map((msg, idx) => <MessageBlock key={idx} msg={msg} />)}
             {isLoading && liveSteps.length > 0 && (
