@@ -225,7 +225,7 @@ const KnowledgeHub = () => {
     };
 
     return (
-        <div style={{ display: 'flex', height: '100%', background: '#fff', fontFamily: T.sans, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', height: '100%', background: T.cream, fontFamily: T.sans, overflow: 'hidden' }}>
 
             {/* ── LEFT SIDEBAR ── */}
             <aside style={{ width: '240px', borderRight: `0.5px solid ${T.border}`, padding: '1.75rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', flexShrink: 0, background: T.cream, overflowY: 'auto' }}>
@@ -287,7 +287,7 @@ const KnowledgeHub = () => {
             </aside>
 
             {/* ── MAIN CONTENT ── */}
-            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', margin: '1rem 1rem 1rem 0', borderRadius: '12px', border: `0.5px solid ${T.border}`, boxShadow: '0 2px 20px rgba(26,26,26,0.07)', background: '#fff' }}>
 
                 {/* Stats strip */}
                 <div style={{ display: 'flex', gap: '1px', borderBottom: `0.5px solid ${T.border}`, flexShrink: 0, background: T.border }}>
