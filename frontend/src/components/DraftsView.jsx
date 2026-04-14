@@ -85,6 +85,7 @@ const DraftsView = ({ sources = [] }) => {
   const [tenders, setTenders] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showTenderDropdown, setShowTenderDropdown] = useState(false);
+  const [useVaultReuse, setUseVaultReuse] = useState(true);
   const dropdownRef = useRef(null);
   const tenderDropdownRef = useRef(null);
 
@@ -136,7 +137,11 @@ const DraftsView = ({ sources = [] }) => {
     setIsGenerating(true); setDraft(null); editor?.commands.setContent('');
     const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
     try {
-      const res = await axios.post(`${base}/draft`, { document_id: selectedDocId, draft_type: draftType });
+      const res = await axios.post(`${base}/draft`, {
+        document_id: selectedDocId,
+        draft_type: draftType,
+        use_vault_reuse: useVaultReuse,
+      });
       setDraft(res.data);
     } catch { setDraft({ error: 'Failed to generate draft. Please try again.' }); }
     finally { setIsGenerating(false); }
@@ -273,6 +278,24 @@ const DraftsView = ({ sources = [] }) => {
           </div>
         </div>
 
+        {/* Vault reuse toggle */}
+        <div style={{ marginBottom: '1.75rem', padding: '12px 14px', border: `0.5px solid ${useVaultReuse ? '#B8860B44' : T.border}`, borderRadius: '10px', background: useVaultReuse ? 'rgba(184,134,11,0.05)' : T.surface, transition: 'all 0.2s' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: useVaultReuse ? '6px' : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BookOpen size={13} style={{ color: useVaultReuse ? T.accent : T.faint }} />
+              <span style={{ fontSize: '12px', fontWeight: 500, color: useVaultReuse ? T.ink : T.muted, fontFamily: T.sans }}>Smart Vault Reuse</span>
+            </div>
+            {/* Toggle switch */}
+            <button onClick={() => setUseVaultReuse(p => !p)}
+              style={{ width: '36px', height: '20px', borderRadius: '10px', border: 'none', background: useVaultReuse ? T.accent : T.border, cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+              <span style={{ position: 'absolute', top: '3px', left: useVaultReuse ? '18px' : '3px', width: '14px', height: '14px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+            </button>
+          </div>
+          {useVaultReuse && (
+            <p style={{ margin: 0, fontSize: '11px', color: T.muted, lineHeight: 1.5, fontFamily: T.sans }}>AI will search your past proposals and adapt relevant sections instead of generating from scratch.</p>
+          )}
+        </div>
+
         {/* Divider */}
         <div style={{ height: '0.5px', background: T.border, marginBottom: '1.75rem' }} />
 
@@ -327,6 +350,26 @@ const DraftsView = ({ sources = [] }) => {
               </div>
             )}
           </div>
+
+          {/* ── Vault references banner ── */}
+          {hasDraft && draft?.reused_from?.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 1.5rem', borderBottom: `0.5px solid rgba(184,134,11,0.2)`, background: 'rgba(184,134,11,0.06)', flexShrink: 0 }}>
+              <BookOpen size={13} style={{ color: T.accent, marginTop: '2px', flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: T.accent, fontFamily: T.sans, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Reused from vault — </span>
+                <span style={{ fontSize: '11px', color: T.muted, fontFamily: T.sans }}>These past proposals were referenced to build this draft:</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                  {draft.reused_from.map((r, i) => (
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 9px', borderRadius: '20px', background: 'rgba(184,134,11,0.10)', border: `0.5px solid rgba(184,134,11,0.25)`, fontSize: '11px', color: '#7a5800', fontFamily: T.sans }}>
+                      <FileText size={10} />
+                      {r.filename}
+                      <span style={{ opacity: 0.6 }}>{Math.round(r.similarity * 100)}%</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── Toolbar ── */}
           {hasDraft && (
