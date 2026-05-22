@@ -4,6 +4,7 @@ backend/.env
 __pycache__/
 *.py[cod]
 *$py.class
+.claude/
 
 # Node
 node_modules/
